@@ -60,8 +60,6 @@ async function fetchMedrxiv(query: string, page: number, perPage: number) {
         };
         
         const cursor = page * perPage;
-
-        // Siempre usamos el rango de fechas ya que la API lo requiere
         const url = `${MEDRXIV_API_URL}/${dateFormat(thirtyDaysAgo)}/${dateFormat(today)}/${cursor}/json`;
 
         const response = await fetch(url);
@@ -76,7 +74,6 @@ async function fetchMedrxiv(query: string, page: number, perPage: number) {
 
         let results = data.collection;
 
-        // Filtrar solo si hay query
         if (query) {
             const queryLower = query.toLowerCase();
             results = results.filter((paper: any) => 

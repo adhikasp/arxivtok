@@ -96,13 +96,13 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
     });
 
     return (
-        <div class="fixed top-16 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[500px] px-3 sm:px-4">
-            <form ref={formRef} onSubmit={handleSubmit} class="w-full relative">
+        <div class="fixed top-16 sm:top-6 right-0 z-50 px-3 sm:px-4">
+            <form ref={formRef} onSubmit={handleSubmit} class=" relative">
                 <div
-                    class='transform transition-all duration-300 ease-out w-full scale-100'
+                    class='transform transition-all duration-300 ease-out scale-100'
                             
                 >
-                    <div class="relative w-full h-12">
+                    <div class="relative h-12">
                         <input
                             ref={inputRef}
                             type="text"
@@ -117,14 +117,14 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
                                 setIsExpanded(true);
                                 setIsFocused(true);
                             }}
-                            class={`w-full h-full pl-5 pr-12 rounded-xl
+                            class={`h-full pl-5 pr-12 rounded-xl
                                    bg-white/90 backdrop-blur-md border border-gray-200/50
                                    focus:border-blue-500 outline-none shadow-sm
                                    transition-all duration-300 ease-out
                                    ${
                                        isExpanded()
                                            ? "opacity-100 translate-y-0"
-                                           : "opacity-0 -translate-y-2"
+                                           : "hidden -translate-y-2"
                                    }
                                    ${
                                        isFocused()
@@ -177,7 +177,7 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
                     }
                 >
                     <div
-                        class="absolute w-full mt-3 bg-white/95 backdrop-blur-xl rounded-xl 
+                        class="absolute mt-3 bg-white/95 backdrop-blur-xl rounded-xl 
                                 shadow-xl border border-gray-100 overflow-hidden
                                 transform transition-all duration-200 ease-out"
                     >
@@ -204,7 +204,7 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
                                     <button
                                         type="button"
                                         onClick={() => handleSearch(search)}
-                                        class="w-full px-4 py-3 text-left flex items-center space-x-3
+                                        class=" px-4 py-3 text-left flex items-center space-x-3
                                                hover:bg-gray-50 transition-colors duration-150"
                                     >
                                         <svg
@@ -236,7 +236,7 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
                                             onClick={() =>
                                                 handleSearch(suggestion)
                                             }
-                                            class={`w-full px-4 py-3 text-left flex items-center space-x-3
+                                            class={`px-4 py-3 text-left flex items-center space-x-3
                                            transition-colors duration-150
                                            ${
                                                index === activeIndex()

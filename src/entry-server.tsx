@@ -16,7 +16,6 @@ export default createHandler(() => (
                 </head>
                 <body>
                     <div id="app">{children}</div>
-                    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
                     {scripts}
                     <script

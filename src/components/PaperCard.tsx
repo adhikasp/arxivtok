@@ -1,33 +1,14 @@
 import { Component, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import katex from "katex";
 
-const MathJaxRenderer: Component<{ math: string; displayMode?: boolean }> = (props) => {
-    let container: HTMLSpanElement | HTMLDivElement | undefined;
-
-    onMount(() => {
-        if (container && 'MathJax' in window) {
-            container.innerHTML = props.displayMode
-                ? `\\[${props.math}\\]`
-                : `\\(${props.math}\\)`;
-
-            // @ts-ignore
-            window.MathJax.typesetPromise([container]).catch((err: any) =>
-                console.error("MathJax typeset failed:", err)
-            );
-        } 
-        // @ts-ignore
-        else if (!window.MathJax) {
-            console.error("MathJax no está cargado en window.MathJax");
-        }
-    });
-
-    return props.displayMode ? (
-        <div ref={(el) => (container = el)} />
-    ) : (
-        <span ref={(el) => (container = el)} />
-    );
-};
+interface LatexParserProps {
+    text: string;
+    isTitle?: boolean;
+}
 
 const PATTERNS = {
+    INLINE_MATH: /\$([^\$]+)\$|\\\(([^\)]+)\\\)/g,
+    DISPLAY_MATH: /\$\$([^\$]+)\$\$|\\\[([^\]]+)\\\]/g,
     SYMBOLS: {
         "\\alpha": "α",
         "\\beta": "β",
@@ -73,12 +54,31 @@ const PATTERNS = {
 };
 
 const formatText = (text: string) => {
-    text = text.replace(PATTERNS.FORMATTING.textbf, '<span class="font-bold">$1</span>');
-    text = text.replace(PATTERNS.FORMATTING.textit, '<span class="italic">$1</span>');
-    text = text.replace(PATTERNS.FORMATTING.underline, '<span class="underline">$1</span>');
-    text = text.replace(PATTERNS.FORMATTING.emph, '<span class="italic">$1</span>');
-    text = text.replace(PATTERNS.CITATIONS, '<span class="text-blue-500 cursor-pointer">[citation]</span>');
-    text = text.replace(PATTERNS.REFERENCES, '<span class="text-blue-500 cursor-pointer">[ref]</span>');
+    text = text.replace(
+        PATTERNS.FORMATTING.textbf,
+        '<span class="font-bold">$1</span>'
+    );
+    text = text.replace(
+        PATTERNS.FORMATTING.textit,
+        '<span class="italic">$1</span>'
+    );
+    text = text.replace(
+        PATTERNS.FORMATTING.underline,
+        '<span class="underline">$1</span>'
+    );
+    text = text.replace(
+        PATTERNS.FORMATTING.emph,
+        '<span class="italic">$1</span>'
+    );
+
+    text = text.replace(
+        PATTERNS.CITATIONS,
+        '<span class="text-blue-500 cursor-pointer">[citation]</span>'
+    );
+    text = text.replace(
+        PATTERNS.REFERENCES,
+        '<span class="text-blue-500 cursor-pointer">[ref]</span>'
+    );
 
     Object.entries(PATTERNS.SYMBOLS).forEach(([symbol, replacement]) => {
         text = text.replaceAll(symbol, replacement);
@@ -87,133 +87,100 @@ const formatText = (text: string) => {
     return text;
 };
 
-export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (props) => {
-    const [parsedContent, setParsedContent] = createSignal<Array<{type: "text" | "math" | "display-math" | "chem"; content: string;}>>([]);
-
-    onMount(() => {
-        const text = props.text;
-        const segments: Array<{type: "text" | "math" | "display-math" | "chem"; content: string;}> = [];
+export const LatexParser: Component<LatexParserProps> = (props) => {
+    const parsedContent = createMemo(() => {
+        let content = props.text;
+        let segments: Array<{
+            type: "text" | "math" | "display-math";
+            content: string;
+        }> = [];
         let lastIndex = 0;
 
-        const chemPattern = /\\ce\{([^}]+)\}/;
-        const displayMathPattern = /\$\$([^\$]+)\$\$|\\\[([^\]]+)\\\]/;
-        const inlineMathPattern = /\$([^\$]+)\$|\\\(([^\)]+)\\\)/;
-        const combinedPattern = new RegExp(`${chemPattern.source}|${displayMathPattern.source}|${inlineMathPattern.source}`, "g");
+        content = content.replace(PATTERNS.DISPLAY_MATH, (match, g1, g2) => {
+            const formula = g1 || g2;
+            try {
+                return `<div class="my-4 px-4 py-2 overflow-x-auto">${katex.renderToString(
+                    formula,
+                    { displayMode: true }
+                )}</div>`;
+            } catch (error) {
+                console.error("KaTeX error:", error);
+                return `<div class="my-4 px-4 py-2 text-red-500 border border-red-300 rounded bg-red-50">${formula}</div>`;
+            }
+        });
 
-        let match: RegExpExecArray | null;
-        while ((match = combinedPattern.exec(text)) !== null) {
-            const start = match.index;
-            if (start > lastIndex) {
-                let plainText = text.substring(lastIndex, start);
-                plainText = formatText(plainText);
-                segments.push({ type: "text", content: plainText });
+        const matches = Array.from(content.matchAll(PATTERNS.INLINE_MATH));
+
+        matches.forEach((match) => {
+            const formula = match[1] || match[2];
+            const startIndex = match.index!;
+
+            if (startIndex > lastIndex) {
+                segments.push({
+                    type: "text",
+                    content: formatText(content.slice(lastIndex, startIndex)),
+                });
             }
-            let formula = "";
-            let type: "math" | "display-math" | "chem" = "math";
-            if (match[1]) {
-                formula = match[1];
-                type = "chem";
+
+            try {
+                segments.push({
+                    type: "math",
+                    content: katex.renderToString(formula, {
+                        displayMode: false,
+                    }),
+                });
+            } catch (error) {
+                console.error("KaTeX error:", error);
+                segments.push({
+                    type: "text",
+                    content: formula,
+                });
             }
-            else if (match[2] || match[3]) {
-                formula = match[2] || match[3];
-                type = "display-math";
-            }
-            else if (match[4] || match[5]) {
-                formula = match[4] || match[5];
-                type = "math";
-            }
-            segments.push({ type, content: formula });
-            lastIndex = combinedPattern.lastIndex;
+
+            lastIndex = startIndex + match[0].length;
+        });
+
+        if (lastIndex < content.length) {
+            segments.push({
+                type: "text",
+                content: formatText(content.slice(lastIndex)),
+            });
         }
-        if (lastIndex < text.length) {
-            let remaining = text.substring(lastIndex);
-            remaining = formatText(remaining);
-            segments.push({ type: "text", content: remaining });
-        }
-        setParsedContent(segments);
+
+        return segments;
     });
 
     return (
-        props.isTitle ? (
-            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight">
-                <For each={parsedContent()}>
-                    {(segment) => {
-                        if (segment.type === "text") {
-                            return <span innerHTML={segment.content} />;
+        <div class={`text-base leading-relaxed text-gray-700 ${props.isTitle ? 'text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight' : ''}`}>
+            <For each={parsedContent()}>
+                {(segment) => (
+                    <Show
+                        when={segment.type === "text"}
+                        fallback={
+                            <span
+                                class={`
+                                    ${
+                                        segment.type === "display-math"
+                                            ? "block my-4"
+                                            : "inline"
+                                    } 
+                                    [&_.katex]:text-lg
+                                    [&_.katex-display]:my-4
+                                    [&_.katex-display]:overflow-x-auto
+                                    [&_.katex-display]:overflow-y-hidden
+                                    [&_.katex-display]:py-2
+                                `}
+                                innerHTML={segment.content}
+                            />
                         }
-                        if (segment.type === "chem") {
-                            return (
-                                <span class="inline [&_.MathJax]:text-lg">
-                                    <MathJaxRenderer
-                                        math={`\\ce{${segment.content}}`}
-                                        displayMode={false}
-                                    />
-                                </span>
-                            );
-                        }
-                        if (segment.type === "math") {
-                            return (
-                                <span class="inline [&_.MathJax]:text-lg">
-                                    <MathJaxRenderer
-                                        math={segment.content}
-                                        displayMode={false}
-                                    />
-                                </span>
-                            );
-                        }
-                        return (
-                            <div class="block my-4 px-4 py-2 overflow-x-auto [&_.MathJax]:text-lg [&_.MathJax-display]:my-4">
-                                <MathJaxRenderer
-                                    math={segment.content}
-                                    displayMode={true}
-                                />
-                            </div>
-                        );
-                    }}
-                </For>
-            </h2>
-        ) : (
-            <div class="text-base leading-relaxed text-gray-700">
-                <For each={parsedContent()}>
-                    {(segment) => {
-                        if (segment.type === "text") {
-                            return <span innerHTML={segment.content} />;
-                        }
-                        if (segment.type === "chem") {
-                            return (
-                                <span class="inline [&_.MathJax]:text-lg">
-                                    <MathJaxRenderer
-                                        math={`\\ce{${segment.content}}`}
-                                        displayMode={false}
-                                    />
-                                </span>
-                            );
-                        }
-                        if (segment.type === "math") {
-                            return (
-                                <span class="inline [&_.MathJax]:text-lg">
-                                    <MathJaxRenderer
-                                        math={segment.content}
-                                        displayMode={false}
-                                    />
-                                </span>
-                            );
-                        }
-                        return (
-                            <div class="block my-4 px-4 py-2 overflow-x-auto [&_.MathJax]:text-lg [&_.MathJax-display]:my-4">
-                                <MathJaxRenderer
-                                    math={segment.content}
-                                    displayMode={true}
-                                />
-                            </div>
-                        );
-                    }}
-                </For>
-            </div>
-        )
+                    >
+                        <span innerHTML={segment.content} />
+                    </Show>
+                )}
+            </For>
+        </div>
     );
 };
-
 interface Paper {
     id: string;
     title: string;
@@ -241,18 +208,33 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
 
     const handleWheel = (e: WheelEvent) => {
         if (!contentRef) return;
+
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
-        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) return;
+        const isAtBottom =
+            contentRef.scrollTop + contentRef.clientHeight >=
+            contentRef.scrollHeight - 1;
+
+        // If we're scrolling up at the top or down at the bottom, let the parent handle it
+        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+            return;
+        }
+
+        // Otherwise, handle the scroll internally and prevent paper change
         e.stopPropagation();
     };
 
     const handleTouchStart = (e: TouchEvent) => {
         if (!contentRef) return;
+
         setTouchStartY(e.touches[0].clientY);
         setScrollStartPosition(contentRef.scrollTop);
+
+        // Only stop propagation if we're not at the edges
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
+        const isAtBottom =
+            contentRef.scrollTop + contentRef.clientHeight >=
+            contentRef.scrollHeight - 1;
+
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
         }
@@ -260,22 +242,31 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
 
     const handleTouchMove = (e: TouchEvent) => {
         if (!contentRef) return;
+
         const currentY = e.touches[0].clientY;
         const touchDelta = touchStartY() - currentY;
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
+        const isAtBottom =
+            contentRef.scrollTop + contentRef.clientHeight >=
+            contentRef.scrollHeight - 1;
+
+        // If we're not at the edges, handle the scroll internally
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
             e.preventDefault();
             contentRef.scrollTop = scrollStartPosition() + touchDelta;
             return;
         }
+
+        // If we're at the top and trying to scroll down, handle internally
         if (isAtTop && touchDelta > 0) {
             e.stopPropagation();
             e.preventDefault();
             contentRef.scrollTop = touchDelta;
             return;
         }
+
+        // If we're at the bottom and trying to scroll up, handle internally
         if (isAtBottom && touchDelta < 0) {
             e.stopPropagation();
             e.preventDefault();
@@ -286,8 +277,13 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
 
     const handleTouchEnd = (e: TouchEvent) => {
         if (!contentRef) return;
+
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
+        const isAtBottom =
+            contentRef.scrollTop + contentRef.clientHeight >=
+            contentRef.scrollHeight - 1;
+
+        // Only stop propagation if we're not at the edges
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
         }

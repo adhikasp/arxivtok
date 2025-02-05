@@ -1,34 +1,21 @@
 export type Source = 'arxiv' | 'medrxiv';
 
-export interface Paper {
-    id: string;
-    title: string;
-    summary: string;
-    authors: string[];
-    published: string;
-    pdfLink?: string;
-    source: Source;
-    category?: string;
-    institution?: string;
-}
-
 export interface FetchOptions {
     page: number;
     perPage: number;
-    queries?: string[];
+    query?: string;
     source?: Source;
 }
 
-export async function fetchPapers({ page, perPage, queries, source = 'arxiv' }: FetchOptions): Promise<Paper[]> {
+export async function fetchPapers({ page, perPage, query, source = 'arxiv' }: FetchOptions) {
     const params = new URLSearchParams({
         page: page.toString(),
         perPage: perPage.toString(),
         source: source,
-        
     });
     
-    if (queries?.length) {
-        params.set('q', queries.join('|'));
+    if (query) {
+        params.set('q', query);
     }
 
     const response = await fetch(`/api/papers?${params}`);

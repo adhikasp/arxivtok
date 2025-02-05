@@ -1,8 +1,38 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { parseStringPromise } from 'xml2js';
 
-const ARXIV_API_URL = "http://export.arxiv.org/api/query";
+const ARXIV_API_URL = "https://export.arxiv.org/api/query";
 const MEDRXIV_API_URL = "https://api.medrxiv.org/details/medrxiv";
+
+interface ArxivEntry {
+    id: string[];
+    title: string[];
+    summary: string[];
+    author?: Array<{ name: string[] }>;
+    published: string[];
+    link?: Array<{ $: { title?: string; href?: string } }>;
+}
+
+interface MedrxivEntry {
+    doi: string;
+    title: string;
+    abstract: string;
+    authors: string;
+    date: string;
+    version: string;
+    category: string;
+    author_corresponding_institution: string;
+}
+
+interface ArxivResponse {
+    feed: {
+        entry?: ArxivEntry | ArxivEntry[];
+    };
+}
+
+interface MedrxivResponse {
+    collection?: MedrxivEntry[];
+}
 
 export async function GET({ request }: APIEvent) {
     const url = new URL(request.url);
@@ -17,23 +47,49 @@ export async function GET({ request }: APIEvent) {
     return await fetchArxiv(query, page, perPage);
 }
 
-async function fetchArxiv(query: string, page: number, perPage: number) {
+async function fetchArxiv(query: string, page: number, perPage: number): Promise<Response> {
     const start = page * perPage;
     let searchQuery = '';
-    
+
     if (query) {
-        const terms = query.split(' ').map(term => `all:${term}`).join(' AND ');
-        searchQuery = encodeURIComponent(terms);
+        const queries = query.split('|').filter(Boolean);
+        if (queries.length > 0) {
+            const formattedQueries = queries.map(q => {
+                // Procesamos cada término individualmente
+                const terms = q.trim().split(' ').filter(Boolean);
+                
+                if (terms.length > 1) {
+                    const combinedTerms = terms.map(term => 
+                        `(abs:${term} OR ti:${term} OR all:${term})`
+                    ).join(' AND ');
+                    return `(${combinedTerms})`;
+                } else {
+                    return `(abs:${terms[0]} OR ti:${terms[0]} OR all:${terms[0]})`;
+                }
+            });
+
+            searchQuery = formattedQueries.join(' AND ');
+        }
     } else {
-        searchQuery = encodeURIComponent("physics OR cs OR math OR q-bio OR q-fin OR AI");
+        // Búsqueda por defecto usando las categorías más relevantes
+        searchQuery = [
+            "cat:cs.AI", // Artificial Intelligence
+            "cat:cs.LG", // Machine Learning
+            "cat:cs.CL", // Computation and Language
+            "cat:cs.CV", // Computer Vision
+            "cat:cs.NE", // Neural and Evolutionary Computing
+            "cat:stat.ML", // Statistics - Machine Learning
+        ].join(" OR ");
     }
 
-    const arxivUrl = `${ARXIV_API_URL}?search_query=${searchQuery}&start=${start}&max_results=${perPage}&sortBy=submittedDate&sortOrder=descending`;
+    const arxivUrl = `${ARXIV_API_URL}?search_query=${encodeURIComponent(searchQuery)}&start=${start}&max_results=${perPage}&sortBy=submittedDate&sortOrder=descending`;
+    console.log("🚀 ~ Query:", searchQuery);
+    console.log("🚀 ~ URL:", decodeURIComponent(arxivUrl));
 
     try {
         const response = await fetch(arxivUrl);
         const xmlData = await response.text();
-        const result = await parseStringPromise(xmlData);
+        const result = await parseStringPromise(xmlData) as ArxivResponse;
         
         const entries = result.feed.entry || [];
         const papers = Array.isArray(entries) ? entries.map(transformArxivEntry) : [transformArxivEntry(entries)];
@@ -46,7 +102,7 @@ async function fetchArxiv(query: string, page: number, perPage: number) {
     }
 }
 
-async function fetchMedrxiv(query: string, page: number, perPage: number) {
+async function fetchMedrxiv(query: string, page: number, perPage: number): Promise<Response> {
     try {
         const today = new Date();
         const thirtyDaysAgo = new Date(today);
@@ -63,7 +119,7 @@ async function fetchMedrxiv(query: string, page: number, perPage: number) {
         const url = `${MEDRXIV_API_URL}/${dateFormat(thirtyDaysAgo)}/${dateFormat(today)}/${cursor}/json`;
 
         const response = await fetch(url);
-        const data = await response.json();
+        const data = await response.json() as MedrxivResponse;
 
         if (!data.collection || !Array.isArray(data.collection)) {
             console.error('Medrxiv API response:', data);
@@ -73,13 +129,24 @@ async function fetchMedrxiv(query: string, page: number, perPage: number) {
         }
 
         let results = data.collection;
+            console.log("🚀 ~ fetchMedrxiv ~ query:", query);
 
         if (query) {
-            const queryLower = query.toLowerCase();
-            results = results.filter((paper: any) => 
-                paper.title.toLowerCase().includes(queryLower) ||
-                paper.abstract.toLowerCase().includes(queryLower)
-            );
+            const queries = query.split('|')
+                .filter(Boolean)
+                .map(q => q.trim().toLowerCase());
+            
+            if (queries.length > 0) {
+                results = results.filter((paper: any) => 
+                    queries.some(q => {
+                        const terms = q.split(' ').filter(Boolean);
+                        return terms.every(term =>
+                            paper.title.toLowerCase().includes(term) ||
+                            paper.abstract.toLowerCase().includes(term)
+                        );
+                    })
+                );
+            }
         }
 
         results = results.slice(0, perPage);

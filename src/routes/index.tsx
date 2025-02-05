@@ -110,6 +110,56 @@ export default function Home() {
         setTouchEnd(0);
     };
 
+    const NoResults = () => (
+        <div class="h-full w-full flex flex-col items-center justify-center p-8 text-center">
+            <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl max-w-md mx-auto">
+                <svg 
+                    class="w-16 h-16 mx-auto mb-6 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="1.5"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" 
+                    />
+                </svg>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">No papers found</h3>
+                <p class="text-gray-600 mb-6">
+                    {activeQueries().length > 0 
+                        ? "Try adjusting your search filters or try a different query"
+                        : "Loading more papers..."}
+                </p>
+                <Show when={activeQueries().length > 0}>
+                    <button
+                        onClick={() => {
+                            setActiveQueries([]);
+                            loadPapers(true);
+                        }}
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                        <svg 
+                            class="w-4 h-4 mr-2" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path 
+                                stroke-linecap="round" 
+                                stroke-linejoin="round" 
+                                stroke-width="2" 
+                                d="M19 12H5m7 7l-7-7 7-7"
+                            />
+                        </svg>
+                        Clear filters
+                    </button>
+                </Show>
+            </div>
+        </div>
+    );
+
     onMount(() => {
         loadPapers();
         window.addEventListener("wheel", handleScroll, { passive: false });
@@ -295,28 +345,26 @@ export default function Home() {
             <SearchBar onSearch={handleSearch} />
 
             <div class="relative h-full w-full">
-                <For each={papers()}>
-                    {(paper, index) => (
-                        <div
-                            class="absolute w-full h-full transition-transform duration-500 ease-out will-change-transform"
-                            style={{
-                                transform: `translateY(${
-                                    (index() - currentIndex()) * 100
-                                }vh)`,
-                            }}
-                        >
-                            <PaperCard paper={paper} />
-                        </div>
-                    )}
-                </For>
+                <Show
+                    when={papers().length > 0}
+                    fallback={<NoResults />}
+                >
+                    <For each={papers()}>
+                        {(paper, index) => (
+                            <div
+                                class="absolute w-full h-full transition-transform duration-500 ease-out will-change-transform"
+                                style={{
+                                    transform: `translateY(${
+                                        (index() - currentIndex()) * 100
+                                    }vh)`,
+                                }}
+                            >
+                                <PaperCard paper={paper} />
+                            </div>
+                        )}
+                    </For>
+                </Show>
             </div>
-            {isLoading() && (
-                <div class="fixed bottom-4 left-1/2 transform -translate-x-1/2">
-                    <div class="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full">
-                        Loading more papers...
-                    </div>
-                </div>
-            )}
         </main>
     );
 }

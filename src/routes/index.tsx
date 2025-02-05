@@ -97,29 +97,34 @@ export default function Home() {
     });
 
     return (
-        <main 
+        <main
             class="h-screen w-screen overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 touch-none overscroll-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            {/* Header con título y búsqueda */}
-            <div class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
-                <div class="max-w-7xl mx-auto flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div>
-                            <h1 class="text-2xl font-bold tracking-tight">
-                                <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                                    ArXiv
-                                </span>
-                                <span class="text-gray-900">Tok</span>
-                            </h1>
-                            <p class="text-sm text-gray-500 mt-1">Discover research, swipe by swipe</p>
+            <div class="fixed top-0 left-0 right-0 z-50 h-16 px-6 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
+                <div class="max-w-7xl mx-auto h-full flex items-center">
+                    <div class="flex items-center space-x-4 h-full">
+                        <div class="flex-shrink-0">
+                            <div>
+                                <h1 class="text-2xl font-bold tracking-tight">
+                                    <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                                        ArXiv
+                                    </span>
+                                    <span class="text-gray-900">Tok</span>
+                                </h1>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    Discover research, swipe by swipe
+                                </p>
+                            </div>
                         </div>
-                        
+
                         <Show when={searchQuery()}>
                             <div class="flex items-center pl-4 border-l border-gray-200">
-                                <span class="text-xs text-gray-400 mr-2">Filtering:</span>
+                                <span class="text-xs text-gray-400 mr-2">
+                                    Filtering:
+                                </span>
                                 <div class="flex items-center bg-blue-50 px-2 py-1 rounded-md">
                                     <span class="text-sm text-blue-700 font-medium truncate max-w-[150px]">
                                         {searchQuery()}
@@ -131,8 +136,18 @@ export default function Home() {
                                         }}
                                         class="ml-2 text-blue-400 hover:text-blue-600"
                                     >
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                            class="w-3 h-3"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
                                         </svg>
                                     </button>
                                 </div>
@@ -143,7 +158,6 @@ export default function Home() {
             </div>
 
             <SearchBar onSearch={handleSearch} />
-            
 
             <div class="relative h-full w-full">
                 <For each={papers()}>
@@ -151,7 +165,9 @@ export default function Home() {
                         <div
                             class="absolute w-full h-full transition-transform duration-500 ease-out will-change-transform"
                             style={{
-                                transform: `translateY(${(index() - currentIndex()) * 100}vh)`,
+                                transform: `translateY(${
+                                    (index() - currentIndex()) * 100
+                                }vh)`,
                             }}
                         >
                             <PaperCard paper={paper} />

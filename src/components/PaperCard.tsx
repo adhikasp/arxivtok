@@ -1,22 +1,14 @@
-import { Component, createSignal, For, onMount, Show } from "solid-js";
+import { Component, createMemo, createSignal, For, onMount, Show } from "solid-js";
 
-// 1. Componente que se encarga de renderizar la cadena matemática usando MathJax.
-//    Inserta los delimitadores correspondientes y luego llama a MathJax.typesetPromise
-//    para procesar el contenido.
-const MathJaxRenderer: Component<{ math: string; displayMode?: boolean }> = (
-    props
-) => {
+const MathJaxRenderer: Component<{ math: string; displayMode?: boolean }> = (props) => {
     let container: HTMLSpanElement | HTMLDivElement | undefined;
 
     onMount(() => {
         if (container && 'MathJax' in window) {
-            // Inserta la cadena matemática con los delimitadores apropiados:
-            // Para display mode usamos \[ ... \], para inline \(...\)
             container.innerHTML = props.displayMode
                 ? `\\[${props.math}\\]`
                 : `\\(${props.math}\\)`;
 
-            // Llama a MathJax para procesar únicamente este contenedor.
             // @ts-ignore
             window.MathJax.typesetPromise([container]).catch((err: any) =>
                 console.error("MathJax typeset failed:", err)
@@ -35,7 +27,6 @@ const MathJaxRenderer: Component<{ math: string; displayMode?: boolean }> = (
     );
 };
 
-// 2. Función para formatear el texto simple (aplica transformaciones como negrita, itálica, subrayado, etc.)
 const PATTERNS = {
     SYMBOLS: {
         "\\alpha": "α",
@@ -82,31 +73,12 @@ const PATTERNS = {
 };
 
 const formatText = (text: string) => {
-    text = text.replace(
-        PATTERNS.FORMATTING.textbf,
-        '<span class="font-bold">$1</span>'
-    );
-    text = text.replace(
-        PATTERNS.FORMATTING.textit,
-        '<span class="italic">$1</span>'
-    );
-    text = text.replace(
-        PATTERNS.FORMATTING.underline,
-        '<span class="underline">$1</span>'
-    );
-    text = text.replace(
-        PATTERNS.FORMATTING.emph,
-        '<span class="italic">$1</span>'
-    );
-
-    text = text.replace(
-        PATTERNS.CITATIONS,
-        '<span class="text-blue-500 cursor-pointer">[citation]</span>'
-    );
-    text = text.replace(
-        PATTERNS.REFERENCES,
-        '<span class="text-blue-500 cursor-pointer">[ref]</span>'
-    );
+    text = text.replace(PATTERNS.FORMATTING.textbf, '<span class="font-bold">$1</span>');
+    text = text.replace(PATTERNS.FORMATTING.textit, '<span class="italic">$1</span>');
+    text = text.replace(PATTERNS.FORMATTING.underline, '<span class="underline">$1</span>');
+    text = text.replace(PATTERNS.FORMATTING.emph, '<span class="italic">$1</span>');
+    text = text.replace(PATTERNS.CITATIONS, '<span class="text-blue-500 cursor-pointer">[citation]</span>');
+    text = text.replace(PATTERNS.REFERENCES, '<span class="text-blue-500 cursor-pointer">[ref]</span>');
 
     Object.entries(PATTERNS.SYMBOLS).forEach(([symbol, replacement]) => {
         text = text.replaceAll(symbol, replacement);
@@ -115,62 +87,37 @@ const formatText = (text: string) => {
     return text;
 };
 
-// 3. Componente que parsea el contenido mixto (texto, fórmulas matemáticas y expresiones químicas).
-//    Se detectan:
-//      - Fórmulas químicas: \ce{...}
-//      - Display math: $$...$$ o \[...\]
-//      - Inline math: $...$ o \(...\)
-export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
-    props
-) => {
-    const [parsedContent, setParsedContent] = createSignal<
-        Array<{
-            type: "text" | "math" | "display-math" | "chem";
-            content: string;
-        }>
-    >([]);
+export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (props) => {
+    const [parsedContent, setParsedContent] = createSignal<Array<{type: "text" | "math" | "display-math" | "chem"; content: string;}>>([]);
 
     onMount(() => {
         const text = props.text;
-        const segments: Array<{
-            type: "text" | "math" | "display-math" | "chem";
-            content: string;
-        }> = [];
+        const segments: Array<{type: "text" | "math" | "display-math" | "chem"; content: string;}> = [];
         let lastIndex = 0;
 
-        // Definimos los patrones:
         const chemPattern = /\\ce\{([^}]+)\}/;
         const displayMathPattern = /\$\$([^\$]+)\$\$|\\\[([^\]]+)\\\]/;
         const inlineMathPattern = /\$([^\$]+)\$|\\\(([^\)]+)\\\)/;
-
-        // Combinamos los patrones en una única expresión regular (orden: químicas, display, inline)
-        const combinedPattern = new RegExp(
-            `${chemPattern.source}|${displayMathPattern.source}|${inlineMathPattern.source}`,
-            "g"
-        );
+        const combinedPattern = new RegExp(`${chemPattern.source}|${displayMathPattern.source}|${inlineMathPattern.source}`, "g");
 
         let match: RegExpExecArray | null;
         while ((match = combinedPattern.exec(text)) !== null) {
             const start = match.index;
             if (start > lastIndex) {
-                // Extraer y formatear el texto anterior
                 let plainText = text.substring(lastIndex, start);
                 plainText = formatText(plainText);
                 segments.push({ type: "text", content: plainText });
             }
             let formula = "";
             let type: "math" | "display-math" | "chem" = "math";
-            // Si coincide con una expresión química: match[1] estará definida
             if (match[1]) {
                 formula = match[1];
                 type = "chem";
             }
-            // Si coincide con display math: match[2] o match[3]
             else if (match[2] || match[3]) {
                 formula = match[2] || match[3];
                 type = "display-math";
             }
-            // Si coincide con inline math: match[4] o match[5]
             else if (match[4] || match[5]) {
                 formula = match[4] || match[5];
                 type = "math";
@@ -187,7 +134,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
     });
 
     return (
-        // Usamos una condicional directamente en el JSX para elegir la etiqueta
         props.isTitle ? (
             <h2 class="text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight">
                 <For each={parsedContent()}>
@@ -196,7 +142,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
                             return <span innerHTML={segment.content} />;
                         }
                         if (segment.type === "chem") {
-                            // Se vuelve a incluir el comando \ce para que MathJax lo procese
                             return (
                                 <span class="inline [&_.MathJax]:text-lg">
                                     <MathJaxRenderer
@@ -216,7 +161,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
                                 </span>
                             );
                         }
-                        // Caso display-math
                         return (
                             <div class="block my-4 px-4 py-2 overflow-x-auto [&_.MathJax]:text-lg [&_.MathJax-display]:my-4">
                                 <MathJaxRenderer
@@ -236,7 +180,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
                             return <span innerHTML={segment.content} />;
                         }
                         if (segment.type === "chem") {
-                            // Se vuelve a incluir el comando \ce para que MathJax lo procese
                             return (
                                 <span class="inline [&_.MathJax]:text-lg">
                                     <MathJaxRenderer
@@ -256,7 +199,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
                                 </span>
                             );
                         }
-                        // Caso display-math
                         return (
                             <div class="block my-4 px-4 py-2 overflow-x-auto [&_.MathJax]:text-lg [&_.MathJax-display]:my-4">
                                 <MathJaxRenderer
@@ -272,7 +214,6 @@ export const LatexParser: Component<{ text: string; isTitle?: boolean }> = (
     );
 };
 
-// 4. Componente PaperCard que utiliza a LatexParser para renderizar el resumen del paper.
 interface Paper {
     id: string;
     title: string;
@@ -301,12 +242,8 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const handleWheel = (e: WheelEvent) => {
         if (!contentRef) return;
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
-        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
-            return;
-        }
+        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
+        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) return;
         e.stopPropagation();
     };
 
@@ -315,9 +252,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
         setTouchStartY(e.touches[0].clientY);
         setScrollStartPosition(contentRef.scrollTop);
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
+        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
         }
@@ -328,9 +263,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
         const currentY = e.touches[0].clientY;
         const touchDelta = touchStartY() - currentY;
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
+        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
             e.preventDefault();
@@ -354,9 +287,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const handleTouchEnd = (e: TouchEvent) => {
         if (!contentRef) return;
         const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
+        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
         if (!isAtTop && !isAtBottom) {
             e.stopPropagation();
         }

@@ -2,6 +2,7 @@ import { createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { fetchArxivPapers } from "@/lib/arxiv";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
+import { AboutDialog } from "@/components/ui/AboutDialog";
 
 export default function Home() {
     const [papers, setPapers] = createSignal<any[]>([]);
@@ -11,6 +12,7 @@ export default function Home() {
     const [searchQuery, setSearchQuery] = createSignal("");
     const [touchStart, setTouchStart] = createSignal(0);
     const [touchEnd, setTouchEnd] = createSignal(0);
+    const [isAboutOpen, setIsAboutOpen] = createSignal(false);
     const minSwipeDistance = 50;
 
     const loadPapers = async (reset = false) => {
@@ -103,30 +105,30 @@ export default function Home() {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            <div class="fixed top-0 left-0 right-0 z-50 h-16 px-6 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
-                <div class="max-w-7xl mx-auto h-full flex items-center">
-                    <div class="flex items-center space-x-4 h-full">
+            <div class="fixed top-0 left-0 right-0 z-50 h-16 px-3 sm:px-6 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
+                <div class="max-w-7xl mx-auto h-full flex items-center justify-between">
+                    <div class="flex items-center space-x-2 sm:space-x-4 h-full">
                         <div class="flex-shrink-0">
                             <div>
-                                <h1 class="text-2xl font-bold tracking-tight">
+                                <h1 class="text-xl sm:text-2xl font-bold tracking-tight">
                                     <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                                         ArXiv
                                     </span>
                                     <span class="text-gray-900">Tok</span>
                                 </h1>
-                                <p class="text-sm text-gray-500 mt-1">
+                                <p class="hidden sm:block text-sm text-gray-500 mt-1">
                                     Discover research, swipe by swipe
                                 </p>
                             </div>
                         </div>
 
                         <Show when={searchQuery()}>
-                            <div class="flex items-center pl-4 border-l border-gray-200">
-                                <span class="text-xs text-gray-400 mr-2">
+                            <div class="flex items-center pl-2 sm:pl-4 border-l border-gray-200">
+                                <span class="hidden sm:inline text-xs text-gray-400 mr-2">
                                     Filtering:
                                 </span>
                                 <div class="flex items-center bg-blue-50 px-2 py-1 rounded-md">
-                                    <span class="text-sm text-blue-700 font-medium truncate max-w-[150px]">
+                                    <span class="text-xs sm:text-sm text-blue-700 font-medium truncate max-w-[100px] sm:max-w-[150px]">
                                         {searchQuery()}
                                     </span>
                                     <button
@@ -134,7 +136,7 @@ export default function Home() {
                                             setSearchQuery("");
                                             loadPapers(true);
                                         }}
-                                        class="ml-2 text-blue-400 hover:text-blue-600"
+                                        class="ml-1 sm:ml-2 text-blue-400 hover:text-blue-600"
                                     >
                                         <svg
                                             class="w-3 h-3"
@@ -154,8 +156,32 @@ export default function Home() {
                             </div>
                         </Show>
                     </div>
+                    <button
+                        onClick={() => setIsAboutOpen(true)}
+                        class="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100/50"
+                        title="About ArXivTok"
+                    >
+                        <svg
+                            class="w-4 h-4 sm:w-5 sm:h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                    </button>
                 </div>
             </div>
+
+            <AboutDialog
+                isOpen={isAboutOpen()}
+                onOpenChange={setIsAboutOpen}
+            />
 
             <SearchBar onSearch={handleSearch} />
 

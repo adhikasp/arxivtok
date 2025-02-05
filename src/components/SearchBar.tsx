@@ -96,7 +96,7 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
     });
 
     return (
-        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[500px] px-4">
+        <div class="fixed top-16 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[500px] px-3 sm:px-4">
             <form ref={formRef} onSubmit={handleSubmit} class="w-full relative">
                 <div
                     class='transform transition-all duration-300 ease-out w-full scale-100'

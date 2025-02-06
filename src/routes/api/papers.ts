@@ -70,16 +70,6 @@ async function fetchArxiv(query: string, page: number, perPage: number): Promise
 
             searchQuery = formattedQueries.join(' AND ');
         }
-    } else {
-        // Búsqueda por defecto usando las categorías más relevantes
-        searchQuery = [
-            "cat:cs.AI", // Artificial Intelligence
-            "cat:cs.LG", // Machine Learning
-            "cat:cs.CL", // Computation and Language
-            "cat:cs.CV", // Computer Vision
-            "cat:cs.NE", // Neural and Evolutionary Computing
-            "cat:stat.ML", // Statistics - Machine Learning
-        ].join(" OR ");
     }
 
     const arxivUrl = `${ARXIV_API_URL}?search_query=${encodeURIComponent(searchQuery)}&start=${start}&max_results=${perPage}&sortBy=submittedDate&sortOrder=descending`;

@@ -6,6 +6,15 @@ import { fetchPapers } from "@/lib/papers";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
 
+const defaultQueries = [
+    "Artificial Intelligence",
+    "Machine Learning",
+    "Computation and Language",
+    "Computer Vision",
+    "Neural and Evolutionary Computing",
+    "Machine Learning"
+];
+
 export default function Home() {
     const [papers, setPapers] = createSignal<any[]>([]);
     const [currentIndex, setCurrentIndex] = createSignal(0);
@@ -16,7 +25,7 @@ export default function Home() {
     const [isAboutOpen, setIsAboutOpen] = createSignal(false);
     const [currentSource, setCurrentSource] = createSignal<"arxiv" | "medrxiv">("arxiv");
     const [isScrolling, setIsScrolling] = createSignal(false);
-    const [activeQueries, setActiveQueries] = createSignal<string[]>([]);
+    const [activeQueries, setActiveQueries] = createSignal<string[]>(defaultQueries);
     const [showAllQueries] = createSignal(false);
     const minSwipeDistance = 50;
     const scrollCooldown = 200;

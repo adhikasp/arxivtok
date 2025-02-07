@@ -204,7 +204,10 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const [isInteracting, setIsInteracting] = createSignal(false);
     const [lastTap, setLastTap] = createSignal(0);
     const [showHeartAnimation, setShowHeartAnimation] = createSignal(false);
+    const [initialTouch, setInitialTouch] = createSignal<{ y: number; time: number } | null>(null);
+    const [isScrolling, setIsScrolling] = createSignal(false);
     let contentRef: HTMLDivElement | undefined;
+    let summaryRef: HTMLDivElement | undefined;
 
     onMount(() => {
         if (contentRef) {
@@ -213,82 +216,59 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     });
 
     const handleWheel = (e: WheelEvent) => {
-        if (!contentRef) return;
+        if (!summaryRef) return;
 
-        const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
+        const isAtTop = summaryRef.scrollTop === 0;
+        const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight - 1;
 
-        // If we're scrolling up at the top or down at the bottom, let the parent handle it
-        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
-            return;
+        if (summaryRef.scrollHeight > summaryRef.clientHeight) {
+            if ((e.deltaY < 0 && !isAtTop) || (e.deltaY > 0 && !isAtBottom)) {
+                e.stopPropagation();
+            }
         }
-
-        // Otherwise, handle the scroll internally and prevent paper change
-        e.stopPropagation();
     };
 
     const handleTouchStart = (e: TouchEvent) => {
         const target = e.target as HTMLElement;
-        const isLink = target.tagName.toLowerCase() === 'a' || target.closest('a');
-        
-        // Siempre permitir interacción con enlaces
-        if (isLink) {
-            return;
-        }
+        if (target.tagName.toLowerCase() === 'a' || target.closest('a')) return;
 
-        // Para el resto del contenido, manejar el scroll
-        if (contentRef && target.closest('.scrollable-content')) {
-            setTouchStartY(e.touches[0].clientY);
-            setScrollStartPosition(contentRef.scrollTop);
-            e.stopPropagation();
-        }
+        const touch = e.touches[0];
+        setInitialTouch({ y: touch.clientY, time: Date.now() });
+        setIsScrolling(false);
+        setTouchStartY(touch.clientY);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-        if (!contentRef || !touchStartY()) return;
+        if (!summaryRef || !initialTouch()) return;
 
-        const currentY = e.touches[0].clientY;
-        const touchDelta = touchStartY() - currentY;
-        const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom = contentRef.scrollTop + contentRef.clientHeight >= contentRef.scrollHeight - 1;
+        const touch = e.touches[0];
+        const deltaY = touchStartY() - touch.clientY;
+        const isAtTop = summaryRef.scrollTop === 0;
+        const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight;
 
-        if (!isAtTop && !isAtBottom) {
-            e.stopPropagation();
-            e.preventDefault();
-            contentRef.scrollTop = scrollStartPosition() + touchDelta;
-        } else if ((isAtTop && touchDelta > 0) || (isAtBottom && touchDelta < 0)) {
-            e.stopPropagation();
-            e.preventDefault();
-            contentRef.scrollTop = scrollStartPosition() + touchDelta;
+        if (summaryRef.scrollHeight > summaryRef.clientHeight) {
+            const canScrollContent = (deltaY > 0 && !isAtBottom) || (deltaY < 0 && !isAtTop);
+            
+            if (canScrollContent) {
+                e.stopPropagation();
+                summaryRef.scrollTop += deltaY;
+                setIsScrolling(true);
+            }
         }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-        if (isInteracting()) {
-            setIsInteracting(false);
-            return;
-        }
-
-        if (!contentRef) return;
-
-        const isAtTop = contentRef.scrollTop === 0;
-        const isAtBottom =
-            contentRef.scrollTop + contentRef.clientHeight >=
-            contentRef.scrollHeight - 1;
-
-        // Only stop propagation if we're not at the edges
-        if (!isAtTop && !isAtBottom) {
+        if (isScrolling()) {
             e.stopPropagation();
         }
+        setInitialTouch(null);
+        setIsScrolling(false);
     };
 
     const handleDoubleTap = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
         const isLink = target.tagName.toLowerCase() === 'a' || target.closest('a');
         
-        // No interferir con enlaces
         if (isLink) return;
 
         e.preventDefault();
@@ -331,53 +311,22 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     return (
         <article class="h-full w-full flex items-center justify-center p-4 sm:p-8">
             <div class="relative paper-card max-w-2xl w-full h-[85vh] rounded-2xl bg-white shadow-xl flex flex-col">
-                {/* Source badge */}
                 <div class="absolute top-4 left-4 z-20 opacity-60">
-                    <div
-                        class={`flex items-center px-3 py-1.5 rounded-full ${
-                            sourceIcons[props.paper.source].color
-                        }`}
-                    >
-                        <span class="text-lg mr-2">
-                            {sourceIcons[props.paper.source].icon}
-                        </span>
+                    <div class={`flex items-center px-3 py-1.5 rounded-full ${sourceIcons[props.paper.source].color}`}>
+                        <span class="text-lg mr-2">{sourceIcons[props.paper.source].icon}</span>
                         <span class="text-sm font-medium">
-                            {props.paper.source === "arxiv"
-                                ? "arXiv"
-                                : props.paper.source === "medrxiv"
-                                ? "medRxiv"
-                                : props.paper.source === "biorxiv"
-                                ? "bioRxiv"
-                                : props.paper.source === "pubmed"
-                                ? "PubMed"
-                                : "HackerNews"}
+                            {props.paper.source === "arxiv" ? "arXiv" :
+                             props.paper.source === "medrxiv" ? "medRxiv" :
+                             props.paper.source === "biorxiv" ? "bioRxiv" :
+                             props.paper.source === "pubmed" ? "PubMed" : "HackerNews"}
                         </span>
                     </div>
                 </div>
 
                 <div class="absolute top-0 right-0 z-20 p-4">
-                    <button
-                        onClick={toggleFavorite}
-                        class="p-3 bg-white shadow-lg rounded-full hover:bg-gray-50
-                               transition-all duration-300 active:scale-95 transform hover:scale-105
-                               group"
-                    >
-                        <svg
-                            class={`w-7 h-7 ${
-                                isFavorite(props.paper.id)
-                                    ? "text-red-500 fill-current"
-                                    : "text-gray-400 group-hover:text-gray-600"
-                            }`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
+                    <button onClick={toggleFavorite} class="p-3 bg-white shadow-lg rounded-full hover:bg-gray-50 transition-all duration-300 active:scale-95 transform hover:scale-105 group">
+                        <svg class={`w-7 h-7 ${isFavorite(props.paper.id) ? "text-red-500 fill-current" : "text-gray-400 group-hover:text-gray-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                     </button>
                 </div>
@@ -385,11 +334,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                 <Show when={showHeartAnimation()}>
                     <div class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                         <div class="transform animate-like-pop">
-                            <svg
-                                class="w-32 h-32 text-red-500 drop-shadow-xl"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                            >
+                            <svg class="w-32 h-32 text-red-500 drop-shadow-xl" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                             </svg>
                         </div>
@@ -397,55 +342,40 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                 </Show>
 
                 <div class="flex flex-col h-full">
-                    {/* Fixed header section */}
                     <div class="p-6 sm:p-8 pb-4">
                         <LatexParser text={props.paper.title} isTitle />
                         <div class="flex items-center space-x-2 mt-4">
                             <span class="text-sm text-gray-500">
-                                {new Date(
-                                    props.paper.published
-                                ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
+                                {new Date(props.paper.published).toLocaleDateString("en-US", {
+                                    year: "numeric", month: "short", day: "numeric"
                                 })}
                             </span>
                             <Show when={props.paper.pdfLink}>
                                 <span class="text-gray-300">•</span>
-                                <a
-                                    href={props.paper.pdfLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="text-blue-500 hover:text-blue-600 text-sm font-medium transition-colors"
-                                >
+                                <a href={props.paper.pdfLink} target="_blank" rel="noopener noreferrer" 
+                                   class="text-blue-500 hover:text-blue-600 text-sm font-medium transition-colors">
                                     View source
                                 </a>
                             </Show>
                         </div>
                     </div>
 
-                    {/* Scrollable summary section */}
-                    <div 
-                        ref={contentRef}
-                        class="flex-1 px-6 sm:px-8 overflow-y-auto overscroll-contain scrollbar-thin 
-                               scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-                        onWheel={handleWheel}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onDblClick={handleDoubleClick}
-                        onClick={handleDoubleTap}
-                    >
+                    <div ref={summaryRef}
+                         class="flex-1 px-6 sm:px-8 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
+                         style="touch-action: pan-y;"
+                         onWheel={handleWheel}
+                         onTouchStart={handleTouchStart}
+                         onTouchMove={handleTouchMove}
+                         onTouchEnd={handleTouchEnd}
+                         onDblClick={handleDoubleClick}
+                         onClick={handleDoubleTap}>
                         <div class="space-y-4">
                             <LatexParser text={props.paper.summary} />
                         </div>
                     </div>
 
-                    {/* Fixed footer section */}
                     <div class="p-6 sm:p-8 pt-4 border-t">
-                        <h3 class="text-sm font-medium text-gray-500 mb-3">
-                            Authors
-                        </h3>
+                        <h3 class="text-sm font-medium text-gray-500 mb-3">Authors</h3>
                         <div class="flex flex-wrap gap-2">
                             {props.paper.authors.map((author) => (
                                 <span class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full text-sm text-gray-600 transition-colors">

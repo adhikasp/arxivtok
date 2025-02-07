@@ -325,7 +325,6 @@ export default function Home() {
             </div>
 
             <AboutDialog isOpen={isAboutOpen()} onOpenChange={setIsAboutOpen} />
-
             <SearchBar onSearch={handleSearch} />
 
             <div class="relative h-full w-full">

@@ -34,13 +34,7 @@ cd arxiv-tok
 npm install
 ```
 
-2. Set up environment variables:
-```env
-VITE_ELSEVIER_API_KEY=your_key_here
-VITE_SPRINGER_API_KEY=your_key_here
-```
-
-3. Run development server:
+2. Run development server:
 ```bash
 npm run dev
 ```

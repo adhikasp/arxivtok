@@ -81,12 +81,41 @@ module.exports = {
         "collapsible-up": "collapsible-up 0.2s ease-out",
         "caret-blink": "caret-blink 1.25s ease-out infinite",
         'in': 'in 0.2s ease-out',
+        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'achievement': 'achievement 0.5s ease-out forwards',
+        'streak': 'streak 0.3s ease-out forwards',
 
       },
       keyframes: {
         in: {
           '0%': { opacity: 0, transform: 'scale(0.95)' },
           '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        ping: {
+          '75%, 100%': {
+            transform: 'scale(2)',
+            opacity: '0',
+          },
+        },
+        achievement: {
+          '0%': {
+            transform: 'translateY(100px)',
+            opacity: '0',
+          },
+          '100%': {
+            transform: 'translateY(0)',
+            opacity: '1',
+          },
+        },
+        streak: {
+          '0%': {
+            transform: 'scale(0.8)',
+            opacity: '0',
+          },
+          '100%': {
+            transform: 'scale(1)',
+            opacity: '1',
+          },
         },
       },
     },

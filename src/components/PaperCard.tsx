@@ -1,7 +1,10 @@
 import { Component, createMemo, createSignal, For, onMount, Show, Switch, Match } from "solid-js";
 import katex from "katex";
-import { useFavorites } from "@/lib/favorites";
+import { favorites, useFavorites } from "@/lib/favorites";
 import { Paper } from "@/lib/papers";
+import { updateReadingProgress } from "@/lib/progress";
+import { TutorialOverlay } from "./TutorialOverlay";
+import { AchievementToast } from "./AchievementToast";
 
 interface LatexParserProps {
     text: string;
@@ -186,6 +189,8 @@ export const LatexParser: Component<LatexParserProps> = (props) => {
 
 interface PaperCardProps {
     paper: Paper;
+    showTutorial?: boolean;
+    onTutorialDismiss?: () => void;
 }
 
 const sourceIcons = {
@@ -206,6 +211,12 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const [showHeartAnimation, setShowHeartAnimation] = createSignal(false);
     const [initialTouch, setInitialTouch] = createSignal<{ y: number; time: number } | null>(null);
     const [isScrolling, setIsScrolling] = createSignal(false);
+    const [lastScrollPosition, setLastScrollPosition] = createSignal(0);
+    const [currentAchievement, setCurrentAchievement] = createSignal<{
+        title: string;
+        description: string;
+        icon: string;
+    } | null>(null);
     let contentRef: HTMLDivElement | undefined;
     let summaryRef: HTMLDivElement | undefined;
 
@@ -221,8 +232,12 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
         const isAtTop = summaryRef.scrollTop === 0;
         const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight - 1;
 
+        // Solo detener la propagación cuando realmente estamos scrolleando el contenido
         if (summaryRef.scrollHeight > summaryRef.clientHeight) {
-            if ((e.deltaY < 0 && !isAtTop) || (e.deltaY > 0 && !isAtBottom)) {
+            const canScrollUp = e.deltaY < 0 && !isAtTop;
+            const canScrollDown = e.deltaY > 0 && !isAtBottom;
+
+            if (canScrollUp || canScrollDown) {
                 e.stopPropagation();
             }
         }
@@ -246,6 +261,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
         const isAtTop = summaryRef.scrollTop === 0;
         const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight;
 
+        // Solo detener la propagación cuando estamos realmente scrolleando el contenido
         if (summaryRef.scrollHeight > summaryRef.clientHeight) {
             const canScrollContent = (deltaY > 0 && !isAtBottom) || (deltaY < 0 && !isAtTop);
             
@@ -305,86 +321,109 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
             removeFavorite(props.paper.id);
         } else {
             addFavorite(props.paper);
+            // Mostrar achievement si es el primer favorito
+            const favCount = favorites().length;
+            if (favCount === 1) {
+                setCurrentAchievement({
+                    title: "First Favorite!",
+                    description: "You've saved your first paper",
+                    icon: "⭐"
+                });
+                setTimeout(() => setCurrentAchievement(null), 3000);
+            }
         }
     };
 
     return (
         <article class="h-full w-full flex items-center justify-center p-4 sm:p-8">
             <div class="relative paper-card max-w-2xl w-full h-[85vh] rounded-2xl bg-white shadow-xl flex flex-col">
-                <div class="absolute top-4 left-4 z-20 opacity-40">
-                    <div class={`flex items-center px-3 py-1.5 rounded-full ${sourceIcons[props.paper.source].color}`}>
-                        <span class="text-lg mr-2">{sourceIcons[props.paper.source].icon}</span>
-                        <span class="text-sm font-medium">
-                            {props.paper.source === "arxiv" ? "arXiv" :
-                             props.paper.source === "medrxiv" ? "medRxiv" :
-                             props.paper.source === "biorxiv" ? "bioRxiv" :
-                             props.paper.source === "pubmed" ? "PubMed" : "HackerNews"}
+                {/* Header section with badges */}
+                <div class="flex justify-between items-start p-4 sm:p-6">
+                    <div class="flex items-center space-x-2">
+                        <div class={`flex items-center px-2.5 py-1 rounded-full ${sourceIcons[props.paper.source].color} bg-opacity-50`}>
+                            <span class="text-base mr-1.5">{sourceIcons[props.paper.source].icon}</span>
+                            <span class="text-xs font-medium">
+                                {props.paper.source === "arxiv" ? "arXiv" :
+                                 props.paper.source === "medrxiv" ? "medRxiv" :
+                                 props.paper.source === "biorxiv" ? "bioRxiv" :
+                                 props.paper.source === "pubmed" ? "PubMed" : "HackerNews"}
+                            </span>
+                        </div>
+                        <span class="text-xs text-gray-500">
+                            {new Date(props.paper.published).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric"
+                            })}
                         </span>
                     </div>
-                </div>
-
-                <div class="absolute top-0 right-0 z-20 p-4">
-                    <button onClick={toggleFavorite} class="p-3 bg-white shadow-lg rounded-full hover:bg-gray-50 transition-all duration-300 active:scale-95 transform hover:scale-105 group">
-                        <svg class={`w-7 h-7 ${isFavorite(props.paper.id) ? "text-red-500 fill-current" : "text-gray-400 group-hover:text-gray-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    <button
+                        onClick={toggleFavorite}
+                        class="p-2 bg-white shadow-md rounded-full hover:bg-gray-50 
+                               transition-all duration-300 active:scale-95 transform hover:scale-105"
+                    >
+                        <svg class={`w-6 h-6 ${isFavorite(props.paper.id) ? "text-red-500 fill-current" : "text-gray-400"}`}
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                     </button>
                 </div>
 
-                <Show when={showHeartAnimation()}>
-                    <div class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-                        <div class="transform animate-like-pop">
-                            <svg class="w-32 h-32 text-red-500 drop-shadow-xl" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                {/* Title section */}
+                <div class="px-4 sm:px-6 pb-4">
+                    <LatexParser text={props.paper.title} isTitle />
+                    <Show when={props.paper.pdfLink}>
+                        <a href={props.paper.pdfLink}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="inline-flex items-center mt-2 text-sm text-blue-500 hover:text-blue-600">
+                            <svg class="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                                <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                             </svg>
-                        </div>
-                    </div>
-                </Show>
+                            View source
+                        </a>
+                    </Show>
+                </div>
 
-                <div class="flex flex-col h-full">
-                    <div class="p-6 sm:p-8 pb-4">
-                        <LatexParser text={props.paper.title} isTitle />
-                        <div class="flex items-center space-x-2 mt-4">
-                            <span class="text-sm text-gray-500">
-                                {new Date(props.paper.published).toLocaleDateString("en-US", {
-                                    year: "numeric", month: "short", day: "numeric"
-                                })}
-                            </span>
-                            <Show when={props.paper.pdfLink}>
-                                <span class="text-gray-300">•</span>
-                                <a href={props.paper.pdfLink} target="_blank" rel="noopener noreferrer" 
-                                   class="text-blue-500 hover:text-blue-600 text-sm font-medium transition-colors">
-                                    View source
-                                </a>
-                            </Show>
-                        </div>
-                    </div>
-
-                    <div ref={summaryRef}
-                         class="flex-1 px-6 sm:px-8 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-                         style="touch-action: pan-y;"
-                         onWheel={handleWheel}
-                         onTouchStart={handleTouchStart}
-                         onTouchMove={handleTouchMove}
-                         onTouchEnd={handleTouchEnd}
-                         onDblClick={handleDoubleClick}
-                         onClick={handleDoubleTap}>
-                        <div class="space-y-4">
-                            <LatexParser text={props.paper.summary} />
-                        </div>
-                    </div>
-
-                    <div class="p-6 sm:p-8 pt-4 border-t">
-                        <h3 class="text-sm font-medium text-gray-500 mb-3">Authors</h3>
-                        <div class="flex flex-wrap gap-2">
-                            {props.paper.authors.map((author) => (
-                                <span class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full text-sm text-gray-600 transition-colors">
-                                    {author}
-                                </span>
-                            ))}
-                        </div>
+                {/* Scrollable summary */}
+                <div ref={summaryRef}
+                     class="flex-1 px-4 sm:px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/50 
+                            scrollbar-track-transparent hover:scrollbar-thumb-gray-300"
+                     style="touch-action: pan-y;"
+                     onWheel={handleWheel}
+                     onTouchStart={handleTouchStart}
+                     onTouchMove={handleTouchMove}
+                     onTouchEnd={handleTouchEnd}
+                     onDblClick={handleDoubleClick}
+                     onClick={handleDoubleTap}>
+                    <div class="space-y-4 pb-4">
+                        <LatexParser text={props.paper.summary} />
                     </div>
                 </div>
+
+                {/* Footer with authors */}
+                <div class="p-4 sm:p-6 border-t border-gray-100">
+                    <div class="flex flex-wrap gap-1.5">
+                        {props.paper.authors.map((author) => (
+                            <span class="inline-flex text-xs px-2 py-1 rounded-full bg-gray-100 
+                                       text-gray-600 hover:bg-gray-200 transition-colors">
+                                {author}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Achievement components */}
+                <Show when={currentAchievement()}>
+                    <AchievementToast {...currentAchievement()!} show={true} />
+                </Show>
+
+            {/* Tutorial overlay */}
+            <Show when={props.showTutorial}>
+                <TutorialOverlay onDismiss={props.onTutorialDismiss} />
+            </Show>
             </div>
         </article>
     );

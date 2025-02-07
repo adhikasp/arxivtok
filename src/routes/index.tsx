@@ -360,7 +360,10 @@ export default function Home() {
                                     })`
                                 }}
                             >
-                                <PaperCard paper={paper} />
+                                <PaperCard 
+                                    paper={paper}
+                                    showTutorial={index() === 0} // Simplificado, el TutorialOverlay maneja su propio estado
+                                />
                             </div>
                         )}
                     </For>

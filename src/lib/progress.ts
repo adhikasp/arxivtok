@@ -1,4 +1,5 @@
 import { createSignal, createRoot } from "solid-js";
+import { toast } from "solid-sonner";
 
 export interface ReadingProgress {
     paperId: string;
@@ -199,34 +200,32 @@ function unlockAchievement(id: string) {
     const achievement = ACHIEVEMENTS.find(a => a.id === id);
     if (achievement && !achievements().some(a => a.id === id)) {
         setAchievements(prev => [...prev, { ...achievement, unlockedAt: new Date().toISOString() }]);
-        // Aquí podrías disparar una notificación o animación
+        
+        toast.success("Achievement Unlocked!", {
+            description: achievement.description,
+            icon: achievement.icon,
+            duration: 4000,
+            class: "achievement-toast",
+        });
     }
 }
 
-export function saveProgress() {
-    if (typeof window !== 'undefined') {
-        try {
-            localStorage.setItem(STORAGE_KEY.PROGRESS, JSON.stringify(readingProgress()));
-            localStorage.setItem(STORAGE_KEY.STREAK, JSON.stringify(streak()));
-            localStorage.setItem(STORAGE_KEY.ACHIEVEMENTS, JSON.stringify(achievements()));
-        } catch (error) {
-            console.warn('Failed to save progress:', error);
-        }
+function saveProgress() {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY.PROGRESS, JSON.stringify(readingProgress()));
+        localStorage.setItem(STORAGE_KEY.STREAK, JSON.stringify(streak()));
+        localStorage.setItem(STORAGE_KEY.ACHIEVEMENTS, JSON.stringify(achievements()));
     }
 }
 
 export function loadProgress() {
-    if (typeof window !== 'undefined') {
-        try {
-            const savedProgress = localStorage.getItem(STORAGE_KEY.PROGRESS);
-            const savedStreak = localStorage.getItem(STORAGE_KEY.STREAK);
-            const savedAchievements = localStorage.getItem(STORAGE_KEY.ACHIEVEMENTS);
+    if (typeof localStorage !== 'undefined') {
+        const savedProgress = localStorage.getItem(STORAGE_KEY.PROGRESS);
+        const savedStreak = localStorage.getItem(STORAGE_KEY.STREAK);
+        const savedAchievements = localStorage.getItem(STORAGE_KEY.ACHIEVEMENTS);
 
-            if (savedProgress) setReadingProgress(JSON.parse(savedProgress));
-            if (savedStreak) setStreak(JSON.parse(savedStreak));
-            if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
-        } catch (error) {
-            console.warn('Failed to load progress:', error);
-        }
+        if (savedProgress) setReadingProgress(JSON.parse(savedProgress));
+        if (savedStreak) setStreak(JSON.parse(savedStreak));
+        if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
     }
 }

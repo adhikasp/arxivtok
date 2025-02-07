@@ -14,6 +14,7 @@ import { Paper } from "@/lib/papers";
 import { updateReadingProgress } from "@/lib/progress";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { AchievementToast } from "./AchievementToast";
+import { toast } from "solid-sonner";
 
 interface LatexParserProps {
     text: string;
@@ -378,16 +379,24 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const toggleFavorite = () => {
         if (isFavorite(props.paper.id)) {
             removeFavorite(props.paper.id);
+            toast.error("Removed from favorites", {
+                description: props.paper.title.slice(0, 60) + "...",
+                duration: 2000,
+            });
         } else {
             addFavorite(props.paper);
             const favCount = favorites().length;
             if (favCount === 1) {
-                setCurrentAchievement({
-                    title: "First Favorite!",
+                toast.success("First Favorite!", {
                     description: "You've saved your first paper",
                     icon: "⭐",
+                    duration: 3000,
                 });
-                setTimeout(() => setCurrentAchievement(null), 3000);
+            } else {
+                toast.success("Added to favorites", {
+                    description: props.paper.title.slice(0, 60) + "...",
+                    duration: 2000,
+                });
             }
         }
     };

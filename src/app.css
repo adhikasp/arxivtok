@@ -222,5 +222,16 @@
     .animate-apple-scale {
       animation: apple-scale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-
+    /* Sonner toast custom styles */
+    .achievement-toast {
+      @apply bg-gradient-to-r from-indigo-500 to-blue-500 text-white;
+    }
+  
+    .achievement-toast [data-description] {
+      @apply text-white/90;
+    }
+  
+    .achievement-toast [data-icon] {
+      @apply text-2xl;
+    }
 }

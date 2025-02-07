@@ -8,10 +8,6 @@ const PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearc
 const PUBMED_ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 const HACKERNEWS_API_URL = "https://hacker-news.firebaseio.com/v0";
 
-function summarizeWithLLM(text: string): string {
-	return text.slice(0, 150) + (text.length > 150 ? "..." : "")
-}
-
 interface ArxivEntry {
 	id: string[]
 	title: string[]
@@ -225,7 +221,7 @@ function transformArxivEntry(entry: any) {
 		title: entry.title?.[0]?.replace(/\s+/g, " ").trim(),
 		summary: summaryText,
 		addictiveSummary: {
-			teaser: summarizeWithLLM(summaryText),
+			teaser: summaryText,
 			full: summaryText
 		},
 		authors: entry.author?.map((author: any) => author.name?.[0]) || [],
@@ -242,7 +238,7 @@ function transformMedrxivEntry(entry: any) {
 		title: entry.title,
 		summary: summaryText,
 		addictiveSummary: {
-			teaser: summarizeWithLLM(summaryText),
+			teaser: summaryText,
 			full: summaryText
 		},
 		authors: entry.authors.split("; "),
@@ -261,7 +257,7 @@ function transformBiorxivEntry(paper: any) {
 		title: paper.title,
 		summary: summaryText,
 		addictiveSummary: {
-			teaser: summarizeWithLLM(summaryText),
+			teaser: summaryText,
 			full: summaryText
 		},
 		authors: paper.authors ? paper.authors.split("; ") : [],
@@ -277,7 +273,7 @@ function transformPubmedEntry(doc: any) {
 		title: doc.title,
 		summary: doc.title,
 		addictiveSummary: {
-			teaser: summarizeWithLLM(doc.title),
+			teaser: doc.title,
 			full: doc.title
 		},
 		authors: doc.authors ? doc.authors.map((a: any) => a.name) : [],
@@ -294,7 +290,7 @@ function transformHackerNewsEntry(story: any) {
         title: story.title,
         summary: summaryText,
         addictiveSummary: {
-            teaser: summarizeWithLLM(summaryText),
+            teaser: summaryText,
             full: summaryText
         },
         authors: [story.by],

@@ -507,27 +507,17 @@ export default function Home() {
                 onSelectPaper={handleSelectFavorite}
             />
 
-            <Show when={showSourceMixer()}>
-                <div
-                    class="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
-                    onClick={() => setShowSourceMixer(false)}
-                >
-                    <div
-                        class="absolute bottom-0 left-0 right-0 p-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-md"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <SourceMixer
-                            selectedSources={selectedSources()}
-                            onSourcesChange={(sources) => {
-                                if (sources.length > 0) {
-                                    setSelectedSources(sources);
-                                    loadPapers(true);
-                                }
-                            }}
-                        />
-                    </div>
-                </div>
-            </Show>
+            <SourceMixer
+                selectedSources={selectedSources()}
+                onSourcesChange={(sources) => {
+                    if (sources.length > 0) {
+                        setSelectedSources(sources);
+                        loadPapers(true);
+                    }
+                }}
+                isOpen={showSourceMixer()}
+                onClose={() => setShowSourceMixer(false)}
+            />
         </main>
     );
 }

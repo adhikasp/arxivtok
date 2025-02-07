@@ -176,5 +176,51 @@
   .animate-like-pop {
       animation: like-pop 0.8s ease-out forwards;
   }
+    /* Apple-style custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+  
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+  
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  
+    /* Apple-style smooth transitions */
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  
+    .apple-blur {
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+    }
+  
+    /* Apple-style animations */
+    @keyframes apple-scale {
+      0% {
+        transform: scale(0.97);
+        opacity: 0;
+      }
+  
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+  
+    .animate-apple-scale {
+      animation: apple-scale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
 }

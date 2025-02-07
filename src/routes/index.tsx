@@ -34,6 +34,7 @@ export default function Home() {
     const [isCardInteraction, setIsCardInteraction] = createSignal(false);
     const MIN_SWIPE_DISTANCE = 30;
     const MIN_SWIPE_VELOCITY = 0.3;
+    const [swipeDirection, setSwipeDirection] = createSignal<'up' | 'down' | null>(null);
 
     const loadPapers = async (reset = false) => {
         if (isLoading()) return;
@@ -65,9 +66,13 @@ export default function Home() {
 
     const scrollToNext = () => {
         if (!isScrolling() && currentIndex() < papers().length - 1) {
+            setSwipeDirection('up');
             setIsScrolling(true);
             setCurrentIndex((i) => i + 1);
-            setTimeout(() => setIsScrolling(false), scrollCooldown);
+            setTimeout(() => {
+                setIsScrolling(false);
+                setSwipeDirection(null);
+            }, scrollCooldown);
         }
 
         if (currentIndex() >= papers().length - 2) {
@@ -77,9 +82,13 @@ export default function Home() {
 
     const scrollToPrevious = () => {
         if (!isScrolling() && currentIndex() > 0) {
+            setSwipeDirection('down');
             setIsScrolling(true);
             setCurrentIndex((i) => i - 1);
-            setTimeout(() => setIsScrolling(false), scrollCooldown);
+            setTimeout(() => {
+                setIsScrolling(false);
+                setSwipeDirection(null);
+            }, scrollCooldown);
         }
     };
 
@@ -459,11 +468,32 @@ export default function Home() {
                     <For each={papers()}>
                         {(paper, index) => (
                             <div
-                                class="absolute w-full h-full transition-transform duration-500 ease-out will-change-transform"
+                                class="absolute w-full h-full transition-all duration-300 ease-out will-change-transform"
                                 style={{
-                                    transform: `translateY(${
-                                        (index() - currentIndex()) * 100
-                                    }vh)`,
+                                    opacity: index() === currentIndex() 
+                                        ? 1 
+                                        : swipeDirection() === 'up' && index() < currentIndex()
+                                        ? 0.3  
+                                        : swipeDirection() === 'down' && index() > currentIndex()
+                                        ? 0.3  
+                                        : 0.8,
+                                    scale: index() === currentIndex() 
+                                        ? 1 
+                                        : swipeDirection() === 'up' && index() < currentIndex()
+                                        ? 0.9 
+                                        : swipeDirection() === 'down' && index() > currentIndex()
+                                        ? 0.9  
+                                        : 0.95,
+                                    perspective: '1000px',
+                                    transform: `translateY(${(index() - currentIndex()) * 100}vh) rotateX(${
+                                        index() === currentIndex()
+                                            ? '0deg'
+                                            : swipeDirection() === 'up' && index() < currentIndex()
+                                            ? '-5deg'  
+                                            : swipeDirection() === 'down' && index() > currentIndex()
+                                            ? '5deg'   
+                                            : '0deg'
+                                    })`
                                 }}
                             >
                                 <PaperCard paper={paper} />

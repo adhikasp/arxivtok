@@ -6,6 +6,7 @@ const MEDRXIV_API_URL = "https://api.medrxiv.org/details/medrxiv"
 const BIORXIV_API_URL = "https://api.biorxiv.org/details/biorxiv"
 const PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 const PUBMED_ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+const HACKERNEWS_API_URL = "https://hacker-news.firebaseio.com/v0";
 
 function summarizeWithLLM(text: string): string {
 	return text.slice(0, 150) + (text.length > 150 ? "..." : "")
@@ -52,6 +53,8 @@ export async function GET({ request }: APIEvent) {
 			return await fetchBiorxiv(query, page, perPage)
 		case "pubmed":
 			return await fetchPubmed(query, page, perPage)
+		case "hackernews":
+			return await fetchHackerNews(query, page, perPage);
 		default:
 			return await fetchArxiv(query, page, perPage)
 	}
@@ -177,6 +180,44 @@ async function fetchPubmed(query: string, page: number, perPage: number): Promis
 	return new Response(JSON.stringify(papers), { headers: { "Content-Type": "application/json" } })
 }
 
+async function fetchHackerNews(query: string, page: number, perPage: number): Promise<Response> {
+    try {
+        // First get story IDs
+        const response = await fetch(`${HACKERNEWS_API_URL}/topstories.json`);
+        const storyIds = await response.json();
+        
+        // Calculate pagination
+        const start = page * perPage;
+        const end = start + perPage;
+        const pageIds = storyIds.slice(start, end);
+        
+        // Fetch individual stories in parallel
+        const stories = await Promise.all(
+            pageIds.map(async (id: number) => {
+                const storyResponse = await fetch(`${HACKERNEWS_API_URL}/item/${id}.json`);
+                return storyResponse.json();
+            })
+        );
+
+        // Filter by query if needed
+        let results = stories;
+        if (query) {
+            const queryLower = query.toLowerCase();
+            results = results.filter((story: any) => 
+                story.title.toLowerCase().includes(queryLower) ||
+                (story.text || "").toLowerCase().includes(queryLower)
+            );
+        }
+
+        const papers = results.map(transformHackerNewsEntry);
+        return new Response(JSON.stringify(papers), {
+            headers: { "Content-Type": "application/json" }
+        });
+    } catch (error) {
+        return handleError(error);
+    }
+}
+
 function transformArxivEntry(entry: any) {
 	const summaryText = entry.summary?.[0]?.replace(/\s+/g, " ").trim() || ""
 	return {
@@ -244,6 +285,23 @@ function transformPubmedEntry(doc: any) {
 		pdfLink: null,
 		source: "pubmed"
 	}
+}
+
+function transformHackerNewsEntry(story: any) {
+    const summaryText = story.text || story.title;
+    return {
+        id: `hn-${story.id}`,
+        title: story.title,
+        summary: summaryText,
+        addictiveSummary: {
+            teaser: summarizeWithLLM(summaryText),
+            full: summaryText
+        },
+        authors: [story.by],
+        published: new Date(story.time * 1000).toISOString(),
+        pdfLink: story.url,
+        source: "hackernews"
+    };
 }
 
 function handleError(error: any) {

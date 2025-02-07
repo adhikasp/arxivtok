@@ -1,4 +1,4 @@
-import { Component, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { Component, createMemo, createSignal, For, onMount, Show, Switch, Match } from "solid-js";
 import katex from "katex";
 
 interface LatexParserProps {
@@ -188,6 +188,7 @@ interface Paper {
     authors: string[];
     published: string;
     pdfLink?: string;
+    aiSummary?: string;
 }
 
 interface PaperCardProps {
@@ -326,7 +327,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                                     rel="noopener noreferrer"
                                     class="text-blue-500 hover:text-blue-600 text-sm font-medium transition-colors"
                                 >
-                                    View PDF
+                                    View source
                                 </a>
                             </Show>
                         </div>

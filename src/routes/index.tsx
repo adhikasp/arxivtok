@@ -2,7 +2,7 @@ import { createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
-import { fetchPapers, Source } from "@/lib/papers";
+import { fetchPapers, Paper, Source } from "@/lib/papers";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
 
@@ -16,7 +16,7 @@ const defaultQueries = [
 ];
 
 export default function Home() {
-    const [papers, setPapers] = createSignal<any[]>([]);
+    const [papers, setPapers] = createSignal<Paper[]>([]);
     const [currentIndex, setCurrentIndex] = createSignal(0);
     const [page, setPage] = createSignal(0);
     const [isLoading, setIsLoading] = createSignal(false);
@@ -40,7 +40,11 @@ export default function Home() {
                 queries: activeQueries(),
                 source: currentSource(),
             });
-            setPapers(reset ? newPapers : [...papers(), ...newPapers]);
+            const enhancedPapers = newPapers.map(paper => ({
+                ...paper,
+            }));
+
+            setPapers(reset ? enhancedPapers : [...papers(), ...enhancedPapers]);
             setPage(reset ? 1 : page() + 1);
             if (reset) setCurrentIndex(0);
         } finally {
@@ -205,15 +209,12 @@ export default function Home() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger class="inline-flex items-center justify-center rounded-md px-2 sm:px-3 py-1.5 text-sm font-medium bg-white hover:bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                                     <span class="mr-2">
-                                        {currentSource() === "arxiv"
-                                            ? "arXiv"
-                                            : currentSource() === "medrxiv"
-                                            ? "medRxiv" 
-                                            : currentSource() === "biorxiv"
-                                            ? "bioRxiv"
-                                            : currentSource() === "pubmed"
-                                            ? "PubMed"
-                                            : ""}
+                                        {currentSource() === "arxiv" ? "arXiv"
+                                         : currentSource() === "medrxiv" ? "medRxiv"
+                                         : currentSource() === "biorxiv" ? "bioRxiv"
+                                         : currentSource() === "pubmed" ? "PubMed"
+                                         : currentSource() === "hackernews" ? "HackerNews"
+                                         : ""}
                                     </span>
                                     <svg
                                         class="w-4 h-4 text-gray-500"
@@ -340,7 +341,33 @@ export default function Home() {
                                             <span>PubMed</span>
                                         </div>
                                     </DropdownMenuItem>
-                                
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setCurrentSource("hackernews");
+                                            loadPapers(true);
+                                        }}
+                                    >
+                                        <div class="flex items-center">
+                                            <svg
+                                                class={`w-4 h-4 mr-2 ${
+                                                    currentSource() === "hackernews"
+                                                        ? "text-blue-500"
+                                                        : "text-transparent"
+                                                }`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>HackerNews</span>
+                                        </div>
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

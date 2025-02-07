@@ -1,4 +1,4 @@
-export type Source = "arxiv" | "medrxiv" | "biorxiv" | "pubmed";
+export type Source = "arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews";
 
 export interface Paper {
     id: string;

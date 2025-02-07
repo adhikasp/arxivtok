@@ -2,9 +2,11 @@ import { createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
-import { fetchPapers, Paper, Source } from "@/lib/papers";
+import { fetchPapers, Paper } from "@/lib/papers";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
+import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
+import { FavoritesModal } from "@/components/FavoritesModal";
 
 const defaultQueries = [
     "Artificial Intelligence",
@@ -16,19 +18,33 @@ const defaultQueries = [
 ];
 
 export default function Home() {
-    const [papers, setPapers] = createSignal<Paper[]>([]);
+    const [papers, setPapers] = createSignal<any[]>([]);
     const [currentIndex, setCurrentIndex] = createSignal(0);
     const [page, setPage] = createSignal(0);
     const [isLoading, setIsLoading] = createSignal(false);
     const [touchStart, setTouchStart] = createSignal(0);
     const [touchEnd, setTouchEnd] = createSignal(0);
     const [isAboutOpen, setIsAboutOpen] = createSignal(false);
-    const [currentSource, setCurrentSource] = createSignal<Source>("arxiv");
+    const [currentSource, setCurrentSource] = createSignal<"arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews">("arxiv");
     const [isScrolling, setIsScrolling] = createSignal(false);
     const [activeQueries, setActiveQueries] = createSignal<string[]>(defaultQueries);
     const [showAllQueries] = createSignal(false);
-    const minSwipeDistance = 50;
-    const scrollCooldown = 200;
+    const [showFavorites, setShowFavorites] = createSignal(false);
+    const [isSwiping, setIsSwiping] = createSignal(false);
+    const [swipeProgress, setSwipeProgress] = createSignal(0);
+    const [touchStartX, setTouchStartX] = createSignal(0);
+    const [touchStartY, setTouchStartY] = createSignal(0);
+    const [initialTouchPos, setInitialTouchPos] = createSignal({ x: 0, y: 0 });
+    const minSwipeDistance = 30; 
+    const scrollCooldown = 200; 
+    const [touchStartTime, setTouchStartTime] = createSignal(0);
+    const [touchMoved, setTouchMoved] = createSignal(false);
+    const TAP_DURATION = 100; // ms
+    const [swipeStartY, setSwipeStartY] = createSignal(0);
+    const [swipeStartTime, setSwipeStartTime] = createSignal(0);
+    const [isCardInteraction, setIsCardInteraction] = createSignal(false);
+    const MIN_SWIPE_DISTANCE = 30;
+    const MIN_SWIPE_VELOCITY = 0.3;
 
     const loadPapers = async (reset = false) => {
         if (isLoading()) return;
@@ -40,11 +56,7 @@ export default function Home() {
                 queries: activeQueries(),
                 source: currentSource(),
             });
-            const enhancedPapers = newPapers.map(paper => ({
-                ...paper,
-            }));
-
-            setPapers(reset ? enhancedPapers : [...papers(), ...enhancedPapers]);
+            setPapers(reset ? newPapers : [...papers(), ...newPapers]);
             setPage(reset ? 1 : page() + 1);
             if (reset) setCurrentIndex(0);
         } finally {
@@ -94,31 +106,48 @@ export default function Home() {
     };
 
     const handleTouchStart = (e: TouchEvent) => {
-        setTouchStart(e.changedTouches[0].screenY);
+        // Solo capturar swipes si no estamos interactuando con el contenido de la card
+        if ((e.target as HTMLElement).closest('.scrollable-content')) {
+            setIsCardInteraction(true);
+            return;
+        }
+
+        setSwipeStartY(e.touches[0].clientY);
+        setSwipeStartTime(Date.now());
+        setIsCardInteraction(false);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-        setTouchEnd(e.changedTouches[0].screenY);
-        if (Math.abs(touchStart() - e.changedTouches[0].screenY) > 10) {
+        if (isCardInteraction()) return;
+
+        const deltaY = swipeStartY() - e.touches[0].clientY;
+        if (Math.abs(deltaY) > 5) {
             e.preventDefault();
         }
     };
 
-    const handleTouchEnd = () => {
-        if (isLoading() || isScrolling()) return;
+    const handleTouchEnd = (e: TouchEvent) => {
+        if (isCardInteraction() || isLoading() || isScrolling()) return;
 
-        const swipeDistance = touchStart() - touchEnd();
+        const endY = e.changedTouches[0].clientY;
+        const deltaY = swipeStartY() - endY;
+        const deltaTime = (Date.now() - swipeStartTime()) / 1000; // en segundos
+        const velocity = Math.abs(deltaY / deltaTime);
 
-        if (Math.abs(swipeDistance) > minSwipeDistance) {
-            if (swipeDistance > 0) {
+        if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE || velocity > MIN_SWIPE_VELOCITY) {
+            if (deltaY > 0) {
                 scrollToNext();
             } else {
                 scrollToPrevious();
             }
         }
+    };
 
+    const resetTouchState = () => {
         setTouchStart(0);
         setTouchEnd(0);
+        setTouchStartTime(0);
+        setTouchMoved(false);
     };
 
     const NoResults = () => (
@@ -173,6 +202,7 @@ export default function Home() {
 
     onMount(() => {
         loadPapers();
+        setFavorites(loadFavorites());
         window.addEventListener("wheel", handleScroll, { passive: false });
         window.addEventListener("touchstart", handleTouchStart, { passive: true });
         window.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -186,8 +216,19 @@ export default function Home() {
         };
     });
 
+    const handleSelectFavorite = (paper: Paper) => {
+        const existingIndex = papers().findIndex(p => p.id === paper.id);
+        if (existingIndex >= 0) {
+            setCurrentIndex(existingIndex);
+        } else {
+            setPapers(prev => [paper, ...prev]);
+            setCurrentIndex(0);
+        }
+        setShowFavorites(false);
+    };
+
     return (
-        <main class="h-screen w-screen overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 touch-none overscroll-none">
+        <main class="h-screen w-screen overflow-hidden touch-none overscroll-none">
             <div class="fixed top-0 left-0 right-0 z-50 h-16 px-3 sm:px-6 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
                 <div class="max-w-7xl mx-auto h-full flex items-center relative">
                     <div class="flex-none flex items-center space-x-2 sm:space-x-4 h-full">
@@ -209,12 +250,15 @@ export default function Home() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger class="inline-flex items-center justify-center rounded-md px-2 sm:px-3 py-1.5 text-sm font-medium bg-white hover:bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                                     <span class="mr-2">
-                                        {currentSource() === "arxiv" ? "arXiv"
-                                         : currentSource() === "medrxiv" ? "medRxiv"
-                                         : currentSource() === "biorxiv" ? "bioRxiv"
-                                         : currentSource() === "pubmed" ? "PubMed"
-                                         : currentSource() === "hackernews" ? "HackerNews"
-                                         : ""}
+                                        {currentSource() === "arxiv"
+                                            ? "arXiv"
+                                            : currentSource() === "medrxiv"
+                                            ? "medRxiv"
+                                            : currentSource() === "biorxiv"
+                                            ? "bioRxiv"
+                                            : currentSource() === "pubmed"
+                                            ? "PubMed"
+                                            : "HackerNews"}
                                     </span>
                                     <svg
                                         class="w-4 h-4 text-gray-500"
@@ -350,7 +394,8 @@ export default function Home() {
                                         <div class="flex items-center">
                                             <svg
                                                 class={`w-4 h-4 mr-2 ${
-                                                    currentSource() === "hackernews"
+                                                    currentSource() ===
+                                                    "hackernews"
                                                         ? "text-blue-500"
                                                         : "text-transparent"
                                                 }`}
@@ -409,25 +454,6 @@ export default function Home() {
                             </div>
                         </div>
                     </Show>
-                    <button
-                        onClick={() => setIsAboutOpen(true)}
-                        class="absolute right-0 p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100/50"
-                        title="About ArXivTok"
-                    >
-                        <svg
-                            class="w-4 h-4 sm:w-5 sm:h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
@@ -453,6 +479,55 @@ export default function Home() {
                     </For>
                 </Show>
             </div>
+
+            {/* Fixed bottom buttons */}
+            <div class="fixed bottom-6 w-full px-6 flex justify-between items-center z-30">
+                <button
+                    onClick={() => setIsAboutOpen(true)}
+                    class="p-3 bg-white/90 backdrop-blur-sm shadow-lg rounded-full 
+                           hover:bg-white transition-all duration-300 group
+                           hover:scale-105 active:scale-95"
+                    title="About ArXivTok"
+                >
+                    <svg
+                        class="w-6 h-6 text-gray-600 group-hover:text-gray-800"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                </button>
+
+                <button
+                    onClick={() => setShowFavorites(true)}
+                    class="flex items-center space-x-2 px-4 py-3 bg-white/90 backdrop-blur-sm
+                           shadow-lg rounded-full hover:bg-white transition-all duration-300
+                           hover:scale-105 active:scale-95 group"
+                >
+                    <svg
+                        class="w-6 h-6 text-red-500"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                    <span class="font-medium text-gray-700 group-hover:text-gray-900">
+                        {favorites().length}
+                    </span>
+                </button>
+            </div>
+
+            <FavoritesModal
+                isOpen={showFavorites()}
+                onClose={() => setShowFavorites(false)}
+                onSelectPaper={handleSelectFavorite}
+            />
         </main>
     );
 }

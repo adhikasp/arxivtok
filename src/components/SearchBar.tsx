@@ -96,7 +96,7 @@ export const SearchBar: Component<SearchBarProps> = (props) => {
     });
 
     return (
-        <div class="fixed top-16 sm:top-6 right-0 z-50 px-3 sm:px-4">
+        <div class="fixed top-16 sm:top-6 right-0 z-30 px-3 sm:px-4 pb-16 sm:pb-0">
             <form ref={formRef} onSubmit={handleSubmit} class=" relative">
                 <div
                     class='transform transition-all duration-300 ease-out scale-100'

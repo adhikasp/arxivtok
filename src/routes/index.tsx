@@ -2,11 +2,12 @@ import { createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
-import { fetchPapers, Paper } from "@/lib/papers";
+import { fetchPapers, Paper, Source } from "@/lib/papers";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
 import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
 import { FavoritesModal } from "@/components/FavoritesModal";
+import { SourceMixer } from "@/components/SourceMixer";
 
 const defaultQueries = [
     "Artificial Intelligence",
@@ -35,18 +36,29 @@ export default function Home() {
     const MIN_SWIPE_DISTANCE = 30;
     const MIN_SWIPE_VELOCITY = 0.3;
     const [swipeDirection, setSwipeDirection] = createSignal<'up' | 'down' | null>(null);
+    const [selectedSources, setSelectedSources] = createSignal<Source[]>(["arxiv"]);
+    const [showSourceMixer, setShowSourceMixer] = createSignal(false);
 
     const loadPapers = async (reset = false) => {
         if (isLoading()) return;
         setIsLoading(true);
         try {
-            const newPapers = await fetchPapers({
-                page: reset ? 0 : page(),
-                perPage: 10,
-                queries: activeQueries(),
-                source: currentSource(),
-            });
-            setPapers(reset ? newPapers : [...papers(), ...newPapers]);
+            const results = await Promise.all(
+                selectedSources().map(source =>
+                    fetchPapers({
+                        page: reset ? 0 : page(),
+                        perPage: Math.ceil(10 / selectedSources().length),
+                        queries: activeQueries(),
+                        source
+                    })
+                )
+            );
+            
+            const mixedPapers = results
+                .flat()
+                .sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
+            
+            setPapers(reset ? mixedPapers : [...papers(), ...mixedPapers]);
             setPage(reset ? 1 : page() + 1);
             if (reset) setCurrentIndex(0);
         } finally {
@@ -249,174 +261,27 @@ export default function Home() {
                         </div>
 
                         <div class="flex items-center pl-4 border-l border-gray-200">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger class="inline-flex items-center justify-center rounded-md px-2 sm:px-3 py-1.5 text-sm font-medium bg-white hover:bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                    <span class="mr-2">
-                                        {currentSource() === "arxiv"
-                                            ? "arXiv"
-                                            : currentSource() === "medrxiv"
-                                            ? "medRxiv"
-                                            : currentSource() === "biorxiv"
-                                            ? "bioRxiv"
-                                            : currentSource() === "pubmed"
-                                            ? "PubMed"
-                                            : "HackerNews"}
-                                    </span>
-                                    <svg
-                                        class="w-4 h-4 text-gray-500"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M19 9l-7 7-7-7"
-                                        />
-                                    </svg>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            setCurrentSource("arxiv");
-                                            loadPapers(true);
-                                        }}
-                                    >
-                                        <div class="flex items-center">
-                                            <svg
-                                                class={`w-4 h-4 mr-2 ${
-                                                    currentSource() === "arxiv"
-                                                        ? "text-blue-500"
-                                                        : "text-transparent"
-                                                }`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span>arXiv</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            setCurrentSource("medrxiv");
-                                            loadPapers(true);
-                                        }}
-                                    >
-                                        <div class="flex items-center">
-                                            <svg
-                                                class={`w-4 h-4 mr-2 ${
-                                                    currentSource() ===
-                                                    "medrxiv"
-                                                        ? "text-blue-500"
-                                                        : "text-transparent"
-                                                }`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span>medRxiv</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            setCurrentSource("biorxiv");
-                                            loadPapers(true);
-                                        }}
-                                    >
-                                        <div class="flex items-center">
-                                            <svg
-                                                class={`w-4 h-4 mr-2 ${
-                                                    currentSource() ===
-                                                    "biorxiv"
-                                                        ? "text-blue-500"
-                                                        : "text-transparent"
-                                                }`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span>bioRxiv</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            setCurrentSource("pubmed");
-                                            loadPapers(true);
-                                        }}
-                                    >
-                                        <div class="flex items-center">
-                                            <svg
-                                                class={`w-4 h-4 mr-2 ${
-                                                    currentSource() === "pubmed"
-                                                        ? "text-blue-500"
-                                                        : "text-transparent"
-                                                }`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span>PubMed</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            setCurrentSource("hackernews");
-                                            loadPapers(true);
-                                        }}
-                                    >
-                                        <div class="flex items-center">
-                                            <svg
-                                                class={`w-4 h-4 mr-2 ${
-                                                    currentSource() ===
-                                                    "hackernews"
-                                                        ? "text-blue-500"
-                                                        : "text-transparent"
-                                                }`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span>HackerNews</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <button
+                                onClick={() => setShowSourceMixer(true)}
+                                class="inline-flex items-center justify-center rounded-md px-3 py-1.5 
+                                       text-sm font-medium bg-white hover:bg-gray-50 border border-gray-200 
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <span class="mr-2">Mix Sources ({selectedSources().length})</span>
+                                <svg
+                                    class="w-4 h-4 text-gray-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                                    />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     <Show when={activeQueries().length > 0}>
@@ -551,6 +416,28 @@ export default function Home() {
                 onClose={() => setShowFavorites(false)}
                 onSelectPaper={handleSelectFavorite}
             />
+
+            <Show when={showSourceMixer()}>
+                <div 
+                    class="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
+                    onClick={() => setShowSourceMixer(false)}
+                >
+                    <div 
+                        class="absolute bottom-0 left-0 right-0 p-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-md"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <SourceMixer
+                            selectedSources={selectedSources()}
+                            onSourcesChange={(sources) => {
+                                if (sources.length > 0) {
+                                    setSelectedSources(sources);
+                                    loadPapers(true);
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+            </Show>
         </main>
     );
 }

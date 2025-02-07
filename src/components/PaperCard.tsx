@@ -188,6 +188,14 @@ interface PaperCardProps {
     paper: Paper;
 }
 
+const sourceIcons = {
+    arxiv: { icon: "🔬", color: "bg-blue-50 text-blue-700" },
+    medrxiv: { icon: "🏥", color: "bg-green-50 text-green-700" },
+    biorxiv: { icon: "🧬", color: "bg-purple-50 text-purple-700" },
+    pubmed: { icon: "📚", color: "bg-amber-50 text-amber-700" },
+    hackernews: { icon: "💻", color: "bg-orange-50 text-orange-700" }
+} as const;
+
 export const PaperCard: Component<PaperCardProps> = (props) => {
     const { isFavorite, addFavorite, removeFavorite } = useFavorites();
     const [isScrollable, setIsScrollable] = createSignal(false);
@@ -323,6 +331,30 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     return (
         <article class="h-full w-full flex items-center justify-center p-4 sm:p-8">
             <div class="relative paper-card max-w-2xl w-full h-[85vh] rounded-2xl bg-white shadow-xl flex flex-col">
+                {/* Source badge */}
+                <div class="absolute top-4 left-4 z-20">
+                    <div
+                        class={`flex items-center px-3 py-1.5 rounded-full ${
+                            sourceIcons[props.paper.source].color
+                        }`}
+                    >
+                        <span class="text-lg mr-2">
+                            {sourceIcons[props.paper.source].icon}
+                        </span>
+                        <span class="text-sm font-medium">
+                            {props.paper.source === "arxiv"
+                                ? "arXiv"
+                                : props.paper.source === "medrxiv"
+                                ? "medRxiv"
+                                : props.paper.source === "biorxiv"
+                                ? "bioRxiv"
+                                : props.paper.source === "pubmed"
+                                ? "PubMed"
+                                : "HackerNews"}
+                        </span>
+                    </div>
+                </div>
+
                 <div class="absolute top-0 right-0 z-20 p-4">
                     <button
                         onClick={toggleFavorite}
@@ -364,19 +396,9 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                     </div>
                 </Show>
 
-                <div
-                    ref={contentRef}
-                    class="h-full overflow-y-auto overscroll-contain p-6 sm:p-8 scrollbar-thin 
-                           scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 
-                           scrollable-content"
-                    onWheel={handleWheel}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    onDblClick={handleDoubleClick}
-                    onClick={handleDoubleTap}
-                >
-                    <div class="mb-6">
+                <div class="flex flex-col h-full">
+                    {/* Fixed header section */}
+                    <div class="p-6 sm:p-8 pb-4">
                         <LatexParser text={props.paper.title} isTitle />
                         <div class="flex items-center space-x-2 mt-4">
                             <span class="text-sm text-gray-500">
@@ -402,21 +424,35 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                         </div>
                     </div>
 
-                    <div class="space-y-4 mb-8">
-                        <LatexParser text={props.paper.summary} />
+                    {/* Scrollable summary section */}
+                    <div 
+                        ref={contentRef}
+                        class="flex-1 px-6 sm:px-8 overflow-y-auto overscroll-contain scrollbar-thin 
+                               scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
+                        onWheel={handleWheel}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onDblClick={handleDoubleClick}
+                        onClick={handleDoubleTap}
+                    >
+                        <div class="space-y-4">
+                            <LatexParser text={props.paper.summary} />
+                        </div>
                     </div>
-                </div>
 
-                <div class="border-t pt-6">
-                    <h3 class="text-sm font-medium text-gray-500 mb-3">
-                        Authors
-                    </h3>
-                    <div class="flex flex-wrap gap-2">
-                        {props.paper.authors.map((author) => (
-                            <span class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full text-sm text-gray-600 transition-colors">
-                                {author}
-                            </span>
-                        ))}
+                    {/* Fixed footer section */}
+                    <div class="p-6 sm:p-8 pt-4 border-t">
+                        <h3 class="text-sm font-medium text-gray-500 mb-3">
+                            Authors
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            {props.paper.authors.map((author) => (
+                                <span class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full text-sm text-gray-600 transition-colors">
+                                    {author}
+                                </span>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -10,6 +10,7 @@ export interface Paper {
     source: Source;
     category?: string;
     institution?: string;
+    sourceIcon?: string; // Para mostrar el icono de la fuente en la tarjeta
 }
 
 export interface FetchOptions {

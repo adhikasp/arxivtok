@@ -1,5 +1,14 @@
-import { Component, createMemo, createSignal, For, onMount, Show, Switch, Match } from "solid-js";
+import {
+    Component,
+    createMemo,
+    createSignal,
+    For,
+    onMount,
+    Show,
+    onCleanup,
+} from "solid-js";
 import katex from "katex";
+import "katex/dist/katex.min.css";
 import { favorites, useFavorites } from "@/lib/favorites";
 import { Paper } from "@/lib/papers";
 import { updateReadingProgress } from "@/lib/progress";
@@ -85,9 +94,9 @@ const formatText = (text: string) => {
         '<span class="text-blue-500 cursor-pointer">[ref]</span>'
     );
 
-    Object.entries(PATTERNS.SYMBOLS).forEach(([symbol, replacement]) => {
+    for (const [symbol, replacement] of Object.entries(PATTERNS.SYMBOLS)) {
         text = text.replaceAll(symbol, replacement);
-    });
+    }
 
     return text;
 };
@@ -116,7 +125,7 @@ export const LatexParser: Component<LatexParserProps> = (props) => {
 
         const matches = Array.from(content.matchAll(PATTERNS.INLINE_MATH));
 
-        matches.forEach((match) => {
+        for (const match of matches) {
             const formula = match[1] || match[2];
             const startIndex = match.index!;
 
@@ -136,14 +145,11 @@ export const LatexParser: Component<LatexParserProps> = (props) => {
                 });
             } catch (error) {
                 console.error("KaTeX error:", error);
-                segments.push({
-                    type: "text",
-                    content: formula,
-                });
+                segments.push({ type: "text", content: formula });
             }
 
             lastIndex = startIndex + match[0].length;
-        });
+        }
 
         if (lastIndex < content.length) {
             segments.push({
@@ -156,25 +162,24 @@ export const LatexParser: Component<LatexParserProps> = (props) => {
     });
 
     return (
-        <div class={`text-base leading-relaxed text-gray-700 ${props.isTitle ? 'text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight' : ''}`}>
+        <div
+            class={`text-base leading-relaxed text-gray-700 ${
+                props.isTitle
+                    ? "text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight"
+                    : ""
+            }`}
+        >
             <For each={parsedContent()}>
                 {(segment) => (
                     <Show
                         when={segment.type === "text"}
                         fallback={
                             <span
-                                class={`
-                                    ${
-                                        segment.type === "display-math"
-                                            ? "block my-4"
-                                            : "inline"
-                                    } 
-                                    [&_.katex]:text-lg
-                                    [&_.katex-display]:my-4
-                                    [&_.katex-display]:overflow-x-auto
-                                    [&_.katex-display]:overflow-y-hidden
-                                    [&_.katex-display]:py-2
-                                `}
+                                class={`${
+                                    segment.type === "display-math"
+                                        ? "block my-4"
+                                        : "inline"
+                                } [&_.katex]:text-lg [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-2`}
                                 innerHTML={segment.content}
                             />
                         }
@@ -191,6 +196,7 @@ interface PaperCardProps {
     paper: Paper;
     showTutorial?: boolean;
     onTutorialDismiss?: () => void;
+    onSwipe?: (direction: "up" | "down" | null) => void;
 }
 
 const sourceIcons = {
@@ -198,107 +204,160 @@ const sourceIcons = {
     medrxiv: { icon: "🏥", color: "bg-green-50 text-green-700" },
     biorxiv: { icon: "🧬", color: "bg-purple-50 text-purple-700" },
     pubmed: { icon: "📚", color: "bg-amber-50 text-amber-700" },
-    hackernews: { icon: "💻", color: "bg-orange-50 text-orange-700" }
+    hackernews: { icon: "💻", color: "bg-orange-50 text-orange-700" },
 } as const;
 
 export const PaperCard: Component<PaperCardProps> = (props) => {
     const { isFavorite, addFavorite, removeFavorite } = useFavorites();
     const [isScrollable, setIsScrollable] = createSignal(false);
     const [touchStartY, setTouchStartY] = createSignal(0);
-    const [scrollStartPosition, setScrollStartPosition] = createSignal(0);
     const [isInteracting, setIsInteracting] = createSignal(false);
     const [lastTap, setLastTap] = createSignal(0);
     const [showHeartAnimation, setShowHeartAnimation] = createSignal(false);
-    const [initialTouch, setInitialTouch] = createSignal<{ y: number; time: number } | null>(null);
+    const [initialTouch, setInitialTouch] = createSignal<{
+        y: number;
+        time: number;
+    } | null>(null);
     const [isScrolling, setIsScrolling] = createSignal(false);
-    const [lastScrollPosition, setLastScrollPosition] = createSignal(0);
     const [currentAchievement, setCurrentAchievement] = createSignal<{
         title: string;
         description: string;
         icon: string;
     } | null>(null);
+    const [scrollStartPos, setScrollStartPos] = createSignal(0);
+    const [momentumId, setMomentumId] = createSignal<number | null>(null);
+
     let contentRef: HTMLDivElement | undefined;
     let summaryRef: HTMLDivElement | undefined;
 
     onMount(() => {
         if (contentRef) {
-            setIsScrollable(contentRef.scrollHeight > contentRef.clientHeight);
+            const resizeObserver = new ResizeObserver(() => {
+                setIsScrollable(
+                    contentRef.scrollHeight > contentRef.clientHeight
+                );
+            });
+            resizeObserver.observe(contentRef);
+            return () => resizeObserver.disconnect();
         }
     });
+
+    onCleanup(() => {
+        if (momentumId()) {
+            cancelAnimationFrame(momentumId()!);
+        }
+    });
+
+    const smoothScroll = (targetPos: number, duration: number) => {
+        const startPos = summaryRef!.scrollTop;
+        const distance = targetPos - startPos;
+        const startTime = performance.now();
+
+        const animation = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+
+            summaryRef!.scrollTop = startPos + distance * easeOutCubic;
+
+            if (progress < 1) {
+                setMomentumId(requestAnimationFrame(animation));
+            } else {
+                setMomentumId(null);
+            }
+        };
+
+        setMomentumId(requestAnimationFrame(animation));
+    };
+
+    const isAtTop = () => summaryRef?.scrollTop === 0;
+    const isAtBottom = () => {
+        if (!summaryRef) return false;
+        const scrollBottom = Math.abs(
+            summaryRef.scrollHeight -
+                summaryRef.clientHeight -
+                summaryRef.scrollTop
+        );
+        return scrollBottom < 1;
+    };
 
     const handleWheel = (e: WheelEvent) => {
         if (!summaryRef) return;
 
-        const isAtTop = summaryRef.scrollTop === 0;
-        const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight - 1;
+        const delta = e.deltaY;
 
-        // Solo detener la propagación cuando realmente estamos scrolleando el contenido
-        if (summaryRef.scrollHeight > summaryRef.clientHeight) {
-            const canScrollUp = e.deltaY < 0 && !isAtTop;
-            const canScrollDown = e.deltaY > 0 && !isAtBottom;
+        if (delta < 0 && isAtTop()) {
+            props.onSwipe?.("down");
+            return;
+        }
 
-            if (canScrollUp || canScrollDown) {
-                e.stopPropagation();
-            }
+        if (delta > 0 && isAtBottom()) {
+            props.onSwipe?.("up");
+            return;
+        }
+
+        if ((delta > 0 && !isAtBottom()) || (delta < 0 && !isAtTop())) {
+            e.stopPropagation();
         }
     };
 
     const handleTouchStart = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        if (target.tagName.toLowerCase() === 'a' || target.closest('a')) return;
-
+        if (!summaryRef) return;
         const touch = e.touches[0];
-        setInitialTouch({ y: touch.clientY, time: Date.now() });
-        setIsScrolling(false);
         setTouchStartY(touch.clientY);
+        setScrollStartPos(summaryRef.scrollTop);
+        setIsScrolling(false);
+        props.onSwipe?.(null);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-        if (!summaryRef || !initialTouch()) return;
+        if (!summaryRef) return;
 
         const touch = e.touches[0];
         const deltaY = touchStartY() - touch.clientY;
-        const isAtTop = summaryRef.scrollTop === 0;
-        const isAtBottom = summaryRef.scrollTop + summaryRef.clientHeight >= summaryRef.scrollHeight;
+        const newScrollTop = scrollStartPos() + deltaY;
 
-        // Solo detener la propagación cuando estamos realmente scrolleando el contenido
-        if (summaryRef.scrollHeight > summaryRef.clientHeight) {
-            const canScrollContent = (deltaY > 0 && !isAtBottom) || (deltaY < 0 && !isAtTop);
-            
-            if (canScrollContent) {
-                e.stopPropagation();
-                summaryRef.scrollTop += deltaY;
-                setIsScrolling(true);
-            }
+        if (deltaY < 0 && isAtTop()) {
+            props.onSwipe?.("down");
+            return;
+        }
+
+        if (deltaY > 0 && isAtBottom()) {
+            props.onSwipe?.("up");
+            return;
+        }
+
+        if ((deltaY > 0 && !isAtBottom()) || (deltaY < 0 && !isAtTop())) {
+            e.preventDefault();
+            summaryRef.scrollTop = newScrollTop;
+            setIsScrolling(true);
         }
     };
 
-    const handleTouchEnd = (e: TouchEvent) => {
-        if (isScrolling()) {
-            e.stopPropagation();
-        }
-        setInitialTouch(null);
+    const handleTouchEnd = () => {
         setIsScrolling(false);
+        if (isAtTop() || isAtBottom()) {
+            props.onSwipe?.(null);
+        }
     };
 
     const handleDoubleTap = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
-        const isLink = target.tagName.toLowerCase() === 'a' || target.closest('a');
-        
-        if (isLink) return;
+        if (target.tagName.toLowerCase() === "a" || target.closest("a")) return;
 
-        e.preventDefault();
-        e.stopPropagation();
-        
         if (e instanceof TouchEvent) {
-            const now = Date.now();
-            const DOUBLE_TAP_DELAY = 300;
+            e.preventDefault();
+            e.stopPropagation();
             
-            if (now - lastTap() < DOUBLE_TAP_DELAY) {
+            const now = Date.now();
+            if (now - lastTap() < 300) { // 300ms for double tap
                 toggleFavoriteWithAnimation();
             }
-            
             setLastTap(now);
+        } else {
+            // Para clicks de escritorio usamos dblclick
+            handleDoubleClick(e);
         }
     };
 
@@ -311,7 +370,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     const toggleFavoriteWithAnimation = () => {
         if (!isFavorite(props.paper.id)) {
             setShowHeartAnimation(true);
-            setTimeout(() => setShowHeartAnimation(false), 1000);
+            setTimeout(() => setShowHeartAnimation(false), 800); // Ajustado a 800ms para coincidir con la animación
         }
         toggleFavorite();
     };
@@ -321,13 +380,12 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
             removeFavorite(props.paper.id);
         } else {
             addFavorite(props.paper);
-            // Mostrar achievement si es el primer favorito
             const favCount = favorites().length;
             if (favCount === 1) {
                 setCurrentAchievement({
                     title: "First Favorite!",
                     description: "You've saved your first paper",
-                    icon: "⭐"
+                    icon: "⭐",
                 });
                 setTimeout(() => setCurrentAchievement(null), 3000);
             }
@@ -337,48 +395,75 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     return (
         <article class="h-full w-full flex items-center justify-center p-4 sm:p-8">
             <div class="relative paper-card max-w-2xl w-full h-[85vh] rounded-2xl bg-white shadow-xl flex flex-col">
-                {/* Header section with badges */}
                 <div class="flex justify-between items-start p-4 sm:p-6">
                     <div class="flex items-center space-x-2">
-                        <div class={`flex items-center px-2.5 py-1 rounded-full ${sourceIcons[props.paper.source].color} bg-opacity-50`}>
-                            <span class="text-base mr-1.5">{sourceIcons[props.paper.source].icon}</span>
+                        <div
+                            class={`flex items-center px-2.5 py-1 rounded-full ${
+                                sourceIcons[props.paper.source].color
+                            }`}
+                        >
+                            <span class="text-base mr-1.5">
+                                {sourceIcons[props.paper.source].icon}
+                            </span>
                             <span class="text-xs font-medium">
-                                {props.paper.source === "arxiv" ? "arXiv" :
-                                 props.paper.source === "medrxiv" ? "medRxiv" :
-                                 props.paper.source === "biorxiv" ? "bioRxiv" :
-                                 props.paper.source === "pubmed" ? "PubMed" : "HackerNews"}
+                                {props.paper.source === "arxiv"
+                                    ? "arXiv"
+                                    : props.paper.source === "medrxiv"
+                                    ? "medRxiv"
+                                    : props.paper.source === "biorxiv"
+                                    ? "bioRxiv"
+                                    : props.paper.source === "pubmed"
+                                    ? "PubMed"
+                                    : "HackerNews"}
                             </span>
                         </div>
                         <span class="text-xs text-gray-500">
-                            {new Date(props.paper.published).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric"
-                            })}
+                            {new Date(props.paper.published).toLocaleDateString(
+                                "en-US",
+                                {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                }
+                            )}
                         </span>
                     </div>
                     <button
                         onClick={toggleFavorite}
-                        class="p-2 bg-white shadow-md rounded-full hover:bg-gray-50 
-                               transition-all duration-300 active:scale-95 transform hover:scale-105"
+                        class="p-2 bg-white shadow-md rounded-full hover:bg-gray-50 transition-all duration-300 active:scale-95 transform hover:scale-105"
                     >
-                        <svg class={`w-6 h-6 ${isFavorite(props.paper.id) ? "text-red-500 fill-current" : "text-gray-400"}`}
-                             viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        <svg
+                            class={`w-6 h-6 ${
+                                isFavorite(props.paper.id)
+                                    ? "text-red-500 fill-current"
+                                    : "text-gray-400"
+                            }`}
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
                         </svg>
                     </button>
                 </div>
 
-                {/* Title section */}
                 <div class="px-4 sm:px-6 pb-4">
                     <LatexParser text={props.paper.title} isTitle />
                     <Show when={props.paper.pdfLink}>
-                        <a href={props.paper.pdfLink}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           class="inline-flex items-center mt-2 text-sm text-blue-500 hover:text-blue-600">
-                            <svg class="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <a
+                            href={props.paper.pdfLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center mt-2 text-sm text-blue-500 hover:text-blue-600"
+                        >
+                            <svg
+                                class="w-4 h-4 mr-1"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
                                 <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                                 <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                             </svg>
@@ -387,43 +472,55 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
                     </Show>
                 </div>
 
-                {/* Scrollable summary */}
-                <div ref={summaryRef}
-                     class="flex-1 px-4 sm:px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/50 
-                            scrollbar-track-transparent hover:scrollbar-thumb-gray-300"
-                     style="touch-action: pan-y;"
-                     onWheel={handleWheel}
-                     onTouchStart={handleTouchStart}
-                     onTouchMove={handleTouchMove}
-                     onTouchEnd={handleTouchEnd}
-                     onDblClick={handleDoubleClick}
-                     onClick={handleDoubleTap}>
+                <div
+                    ref={summaryRef}
+                    class="flex-1 px-4 sm:px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/50 scrollbar-track-transparent hover:scrollbar-thumb-gray-300 overscroll-contain"
+                    style="touch-action: pan-y; -webkit-overflow-scrolling: touch;"
+                    onWheel={handleWheel}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onDblClick={handleDoubleTap}
+                    onClick={handleDoubleTap}
+                >
                     <div class="space-y-4 pb-4">
                         <LatexParser text={props.paper.summary} />
                     </div>
                 </div>
 
-                {/* Footer with authors */}
                 <div class="p-4 sm:p-6 border-t border-gray-100">
                     <div class="flex flex-wrap gap-1.5">
-                        {props.paper.authors.map((author) => (
-                            <span class="inline-flex text-xs px-2 py-1 rounded-full bg-gray-100 
-                                       text-gray-600 hover:bg-gray-200 transition-colors">
-                                {author}
-                            </span>
-                        ))}
+                        <For each={props.paper.authors}>
+                            {(author) => (
+                                <span class="inline-flex text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                                    {author}
+                                </span>
+                            )}
+                        </For>
                     </div>
                 </div>
 
-                {/* Achievement components */}
                 <Show when={currentAchievement()}>
                     <AchievementToast {...currentAchievement()!} show={true} />
                 </Show>
 
-            {/* Tutorial overlay */}
-            <Show when={props.showTutorial}>
-                <TutorialOverlay onDismiss={props.onTutorialDismiss} />
-            </Show>
+                <Show when={showHeartAnimation()}>
+                    <div class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                        <div class="animate-like-pop">
+                            <svg
+                                class="w-32 h-32 text-red-500 filter drop-shadow-xl"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                            </svg>
+                        </div>
+                    </div>
+                </Show>
+
+                <Show when={props.showTutorial}>
+                    <TutorialOverlay onDismiss={props.onTutorialDismiss} />
+                </Show>
             </div>
         </article>
     );

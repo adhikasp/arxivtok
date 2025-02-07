@@ -3,11 +3,17 @@ import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
 import { fetchPapers, Paper, Source } from "@/lib/papers";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
 import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
 import { FavoritesModal } from "@/components/FavoritesModal";
 import { SourceMixer } from "@/components/SourceMixer";
+import { PaperRoulette } from "@/components/PaperRoulette";
 
 const defaultQueries = [
     "Artificial Intelligence",
@@ -15,7 +21,7 @@ const defaultQueries = [
     "Computation and Language",
     "Computer Vision",
     "Neural and Evolutionary Computing",
-    "Machine Learning"
+    "Machine Learning",
 ];
 
 export default function Home() {
@@ -24,40 +30,60 @@ export default function Home() {
     const [page, setPage] = createSignal(0);
     const [isLoading, setIsLoading] = createSignal(false);
     const [isAboutOpen, setIsAboutOpen] = createSignal(false);
-    const [currentSource, setCurrentSource] = createSignal<"arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews">("arxiv");
-    const [isScrolling, setIsScrolling] = createSignal(false);
-    const [activeQueries, setActiveQueries] = createSignal<string[]>(defaultQueries);
+    const [currentSource, setCurrentSource] = createSignal<
+        "arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews"
+    >("arxiv");
+    const [isScrolling, setIsScrolling] = createSignal(false); // Keep isScrolling for animation
+    const [activeQueries, setActiveQueries] =
+        createSignal<string[]>(defaultQueries);
     const [showAllQueries] = createSignal(false);
     const [showFavorites, setShowFavorites] = createSignal(false);
-    const scrollCooldown = 200; 
+    const scrollCooldown = 200; // Animation cooldown, keep this
     const [swipeStartY, setSwipeStartY] = createSignal(0);
     const [swipeStartTime, setSwipeStartTime] = createSignal(0);
-    const [isCardInteraction, setIsCardInteraction] = createSignal(false);
-    const MIN_SWIPE_DISTANCE = 30;
-    const MIN_SWIPE_VELOCITY = 0.3;
-    const [swipeDirection, setSwipeDirection] = createSignal<'up' | 'down' | null>(null);
-    const [selectedSources, setSelectedSources] = createSignal<Source[]>(["arxiv"]);
+    const MIN_SWIPE_DISTANCE = 30; // Adjust as needed
+    const MIN_SWIPE_VELOCITY = 0.3; // Adjust as needed
+    const [swipeDirection, setSwipeDirection] = createSignal<
+        "up" | "down" | null
+    >(null);
+    const [selectedSources, setSelectedSources] = createSignal<Source[]>([
+        "arxiv",
+    ]);
     const [showSourceMixer, setShowSourceMixer] = createSignal(false);
+    const [isCardInteracting, setIsCardInteracting] = createSignal(false);
+
+    // Debounce function (optional, but recommended)
+    const debounce = (func: () => void, delay: number) => {
+        let timeoutId: any;
+        return () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(func, delay);
+        };
+    };
 
     const loadPapers = async (reset = false) => {
         if (isLoading()) return;
         setIsLoading(true);
         try {
             const results = await Promise.all(
-                selectedSources().map(source =>
+                selectedSources().map((source) =>
                     fetchPapers({
                         page: reset ? 0 : page(),
                         perPage: Math.ceil(10 / selectedSources().length),
                         queries: activeQueries(),
-                        source
+                        source,
                     })
                 )
             );
-            
+
             const mixedPapers = results
                 .flat()
-                .sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
-            
+                .sort(
+                    (a, b) =>
+                        new Date(b.published).getTime() -
+                        new Date(a.published).getTime()
+                );
+
             setPapers(reset ? mixedPapers : [...papers(), ...mixedPapers]);
             setPage(reset ? 1 : page() + 1);
             if (reset) setCurrentIndex(0);
@@ -67,47 +93,56 @@ export default function Home() {
     };
 
     const handleSearch = (query: string) => {
-        setActiveQueries(prev => [...new Set([...prev, query])]);
+        setActiveQueries((prev) => [...new Set([...prev, query])]);
         loadPapers(true);
     };
 
     const removeQuery = (queryToRemove: string) => {
-        setActiveQueries(prev => prev.filter(q => q !== queryToRemove));
+        setActiveQueries((prev) => prev.filter((q) => q !== queryToRemove));
         loadPapers(true);
     };
 
-    const scrollToNext = () => {
-        if (!isScrolling() && currentIndex() < papers().length - 1) {
-            setSwipeDirection('up');
-            setIsScrolling(true);
+    // Debounced versions of scrollToNext and scrollToPrevious (optional)
+    const debouncedScrollToNext = debounce(() => {
+        if (currentIndex() < papers().length - 1) {
+            setSwipeDirection("up");
+            setIsScrolling(true); // For animation
             setCurrentIndex((i) => i + 1);
             setTimeout(() => {
                 setIsScrolling(false);
                 setSwipeDirection(null);
-            }, scrollCooldown);
+            }, scrollCooldown); // Animation cooldown
         }
 
         if (currentIndex() >= papers().length - 2) {
             loadPapers();
         }
-    };
+    }, 100); // 100ms debounce
 
-    const scrollToPrevious = () => {
-        if (!isScrolling() && currentIndex() > 0) {
-            setSwipeDirection('down');
-            setIsScrolling(true);
+    const debouncedScrollToPrevious = debounce(() => {
+        if (currentIndex() > 0) {
+            setSwipeDirection("down");
+            setIsScrolling(true); // For animation
             setCurrentIndex((i) => i - 1);
             setTimeout(() => {
                 setIsScrolling(false);
                 setSwipeDirection(null);
-            }, scrollCooldown);
+            }, scrollCooldown); // Animation cooldown
         }
-    };
+    }, 100); // 100ms debounce
+
+    // Call these instead of the originals
+    const scrollToNext = () => debouncedScrollToNext();
+    const scrollToPrevious = () => debouncedScrollToPrevious();
 
     const handleScroll = (e: WheelEvent) => {
-        e.preventDefault();
         if (isLoading() || isScrolling()) return;
 
+        // Solo manejar el scroll si viene del documento principal
+        if ((e.target as HTMLElement).closest(".scrollable-content")) {
+            return;
+        }
+        e.preventDefault();
         if (e.deltaY > 0) {
             scrollToNext();
         } else if (e.deltaY < 0) {
@@ -116,39 +151,35 @@ export default function Home() {
     };
 
     const handleTouchStart = (e: TouchEvent) => {
-        // Solo capturar swipes si no estamos interactuando con el contenido de la card
-        if ((e.target as HTMLElement).closest('.scrollable-content')) {
-            setIsCardInteraction(true);
-            return;
-        }
-
         setSwipeStartY(e.touches[0].clientY);
         setSwipeStartTime(Date.now());
-        setIsCardInteraction(false);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-        if (isCardInteraction()) return;
-
         const deltaY = swipeStartY() - e.touches[0].clientY;
         if (Math.abs(deltaY) > 5) {
+            // Small threshold to allow for some wiggle room
             e.preventDefault();
         }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-        if (isCardInteraction() || isLoading() || isScrolling()) return;
+        // Usar el estado isCardInteracting en lugar de pasar como parámetro
+        if (isCardInteracting() || isLoading() || isScrolling()) return;
 
         const endY = e.changedTouches[0].clientY;
         const deltaY = swipeStartY() - endY;
-        const deltaTime = (Date.now() - swipeStartTime()) / 1000; // en segundos
+        const deltaTime = (Date.now() - swipeStartTime()) / 1000; // in seconds
         const velocity = Math.abs(deltaY / deltaTime);
 
-        if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE || velocity > MIN_SWIPE_VELOCITY) {
+        if (
+            Math.abs(deltaY) > MIN_SWIPE_DISTANCE &&
+            velocity > MIN_SWIPE_VELOCITY
+        ) {
             if (deltaY > 0) {
-                scrollToNext();
+                scrollToNext(); // Swipe up, go to next paper
             } else {
-                scrollToPrevious();
+                scrollToPrevious(); // Swipe down, go to previous paper
             }
         }
     };
@@ -161,28 +192,34 @@ export default function Home() {
                     fallback={
                         <>
                             <div class="w-16 h-16 mx-auto mb-6 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin" />
-                            <h3 class="text-xl font-semibold text-gray-800 mb-2">Loading papers...</h3>
-                            <p class="text-gray-600">Please wait while we fetch the latest research</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-2">
+                                Loading papers...
+                            </h3>
+                            <p class="text-gray-600">
+                                Please wait while we fetch the latest research
+                            </p>
                         </>
                     }
                 >
-                    <svg 
+                    <svg
                         class="w-16 h-16 mx-auto mb-6 text-gray-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
                     >
-                        <path 
-                            stroke-linecap="round" 
-                            stroke-linejoin="round" 
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
                             stroke-width="1.5"
-                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" 
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                         />
                     </svg>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">No papers found</h3>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">
+                        No papers found
+                    </h3>
                     <p class="text-gray-600 mb-6">
-                        {activeQueries().length > 0 
-                            ? "Try adjusting your search filters or try a different query" 
+                        {activeQueries().length > 0
+                            ? "Try adjusting your search filters or try a different query"
                             : "No papers match your current criteria"}
                     </p>
                     <Show when={activeQueries().length > 0}>
@@ -193,16 +230,16 @@ export default function Home() {
                             }}
                             class="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                         >
-                            <svg 
-                                class="w-4 h-4 mr-2" 
-                                fill="none" 
-                                stroke="currentColor" 
+                            <svg
+                                class="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path 
-                                    stroke-linecap="round" 
-                                    stroke-linejoin="round" 
-                                    stroke-width="2" 
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
                                     d="M19 12H5m7 7l-7-7 7-7"
                                 />
                             </svg>
@@ -218,27 +255,59 @@ export default function Home() {
         loadPapers();
         setFavorites(loadFavorites());
         window.addEventListener("wheel", handleScroll, { passive: false });
-        window.addEventListener("touchstart", handleTouchStart, { passive: true });
-        window.addEventListener("touchmove", handleTouchMove, { passive: false });
-        window.addEventListener("touchend", handleTouchEnd, { passive: true });
 
         return () => {
             window.removeEventListener("wheel", handleScroll);
-            window.removeEventListener("touchstart", handleTouchStart);
-            window.removeEventListener("touchmove", handleTouchMove);
-            window.removeEventListener("touchend", handleTouchEnd);
         };
     });
 
     const handleSelectFavorite = (paper: Paper) => {
-        const existingIndex = papers().findIndex(p => p.id === paper.id);
+        const existingIndex = papers().findIndex((p) => p.id === paper.id);
         if (existingIndex >= 0) {
             setCurrentIndex(existingIndex);
         } else {
-            setPapers(prev => [paper, ...prev]);
+            setPapers((prev) => [paper, ...prev]);
             setCurrentIndex(0);
         }
         setShowFavorites(false);
+    };
+
+    const handleRouletteSelect = (paper: Paper) => {
+        const existingIndex = papers().findIndex((p) => p.id === paper.id);
+        if (existingIndex >= 0) {
+            setCurrentIndex(existingIndex);
+        }
+    };
+
+    const handleRandomize = async (sources: Source[], queries: string[]) => {
+        setSelectedSources(sources);
+        setActiveQueries(queries);
+        await loadPapers(true);
+    };
+
+    const handleSwipe = (direction: 'up' | 'down' | null) => {
+        if (!direction || isLoading() || isScrolling()) return;
+
+        // Solo permitir swipe cuando estamos en los límites
+        if (direction === 'up' && currentIndex() < papers().length - 1) {
+            setSwipeDirection('up');
+            setIsScrolling(true);
+            setCurrentIndex(i => i + 1);
+            
+            if (currentIndex() >= papers().length - 2) {
+                loadPapers();
+            }
+        } else if (direction === 'down' && currentIndex() > 0) {
+            setSwipeDirection('down');
+            setIsScrolling(true);
+            setCurrentIndex(i => i - 1);
+        }
+
+        // Resetear estado después de la animación
+        setTimeout(() => {
+            setIsScrolling(false);
+            setSwipeDirection(null);
+        }, scrollCooldown);
     };
 
     return (
@@ -267,7 +336,9 @@ export default function Home() {
                                        text-sm font-medium bg-white hover:bg-gray-50 border border-gray-200 
                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                             >
-                                <span class="mr-2">Mix Sources ({selectedSources().length})</span>
+                                <span class="mr-2">
+                                    Mix Sources ({selectedSources().length})
+                                </span>
                                 <svg
                                     class="w-4 h-4 text-gray-500"
                                     fill="none"
@@ -334,41 +405,58 @@ export default function Home() {
                             <div
                                 class="absolute w-full h-full transition-all duration-300 ease-out will-change-transform"
                                 style={{
-                                    opacity: index() === currentIndex() 
-                                        ? 1 
-                                        : swipeDirection() === 'up' && index() < currentIndex()
-                                        ? 0.3  
-                                        : swipeDirection() === 'down' && index() > currentIndex()
-                                        ? 0.3  
-                                        : 0.8,
-                                    scale: index() === currentIndex() 
-                                        ? 1 
-                                        : swipeDirection() === 'up' && index() < currentIndex()
-                                        ? 0.9 
-                                        : swipeDirection() === 'down' && index() > currentIndex()
-                                        ? 0.9  
-                                        : 0.95,
-                                    perspective: '1000px',
-                                    transform: `translateY(${(index() - currentIndex()) * 100}vh) rotateX(${
+                                    opacity:
                                         index() === currentIndex()
-                                            ? '0deg'
-                                            : swipeDirection() === 'up' && index() < currentIndex()
-                                            ? '-5deg'  
-                                            : swipeDirection() === 'down' && index() > currentIndex()
-                                            ? '5deg'   
-                                            : '0deg'
-                                    })`
+                                            ? 1
+                                            : swipeDirection() === "up" &&
+                                              index() < currentIndex()
+                                            ? 0.3
+                                            : swipeDirection() === "down" &&
+                                              index() > currentIndex()
+                                            ? 0.3
+                                            : 0.8,
+                                    scale:
+                                        index() === currentIndex()
+                                            ? 1
+                                            : swipeDirection() === "up" &&
+                                              index() < currentIndex()
+                                            ? 0.9
+                                            : swipeDirection() === "down" &&
+                                              index() > currentIndex()
+                                            ? 0.9
+                                            : 0.95,
+                                    perspective: "1000px",
+                                    transform: `translateY(${
+                                        (index() - currentIndex()) * 100
+                                    }vh) rotateX(${
+                                        index() === currentIndex()
+                                            ? "0deg"
+                                            : swipeDirection() === "up" &&
+                                              index() < currentIndex()
+                                            ? "-5deg"
+                                            : swipeDirection() === "down" &&
+                                              index() > currentIndex()
+                                            ? "5deg"
+                                            : "0deg"
+                                    })`,
                                 }}
                             >
-                                <PaperCard 
+                                <PaperCard
                                     paper={paper}
-                                    showTutorial={index() === 0} // Simplificado, el TutorialOverlay maneja su propio estado
+                                    showTutorial={index() === 0}
+                                    onSwipe={handleSwipe}
                                 />
                             </div>
                         )}
                     </For>
                 </Show>
             </div>
+
+            <PaperRoulette
+                papers={papers()}
+                onSelect={handleRouletteSelect}
+                onRandomize={handleRandomize}
+            />
 
             {/* Fixed bottom buttons */}
             <div class="fixed bottom-6 w-full px-6 flex justify-between items-center z-30">
@@ -420,11 +508,11 @@ export default function Home() {
             />
 
             <Show when={showSourceMixer()}>
-                <div 
+                <div
                     class="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
                     onClick={() => setShowSourceMixer(false)}
                 >
-                    <div 
+                    <div
                         class="absolute bottom-0 left-0 right-0 p-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-md"
                         onClick={(e) => e.stopPropagation()}
                     >

@@ -311,7 +311,7 @@ export const PaperCard: Component<PaperCardProps> = (props) => {
     return (
         <article class="h-full w-full flex items-center justify-center p-4 sm:p-8">
             <div class="relative paper-card max-w-2xl w-full h-[85vh] rounded-2xl bg-white shadow-xl flex flex-col">
-                <div class="absolute top-4 left-4 z-20 opacity-60">
+                <div class="absolute top-4 left-4 z-20 opacity-40">
                     <div class={`flex items-center px-3 py-1.5 rounded-full ${sourceIcons[props.paper.source].color}`}>
                         <span class="text-lg mr-2">{sourceIcons[props.paper.source].icon}</span>
                         <span class="text-sm font-medium">

@@ -1,4 +1,4 @@
-export type Source = 'arxiv' | 'medrxiv';
+export type Source = "arxiv" | "medrxiv" | "biorxiv" | "pubmed";
 
 export interface Paper {
     id: string;
@@ -19,21 +19,25 @@ export interface FetchOptions {
     source?: Source;
 }
 
-export async function fetchPapers({ page, perPage, queries, source = 'arxiv' }: FetchOptions): Promise<Paper[]> {
+export async function fetchPapers({
+    page,
+    perPage,
+    queries,
+    source = "arxiv",
+}: FetchOptions): Promise<Paper[]> {
     const params = new URLSearchParams({
         page: page.toString(),
         perPage: perPage.toString(),
         source: source,
-        
     });
-    
+
     if (queries?.length) {
-        params.set('q', queries.join('|'));
+        params.set("q", queries.join("|"));
     }
 
     const response = await fetch(`/api/papers?${params}`);
     if (!response.ok) {
-        throw new Error('Failed to fetch papers');
+        throw new Error("Failed to fetch papers");
     }
     return response.json();
 }

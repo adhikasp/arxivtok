@@ -2,7 +2,7 @@ import { createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
-import { fetchPapers } from "@/lib/papers";
+import { fetchPapers, Source } from "@/lib/papers";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { QueryBadge } from "@/components/QueryBadge";
 
@@ -23,7 +23,7 @@ export default function Home() {
     const [touchStart, setTouchStart] = createSignal(0);
     const [touchEnd, setTouchEnd] = createSignal(0);
     const [isAboutOpen, setIsAboutOpen] = createSignal(false);
-    const [currentSource, setCurrentSource] = createSignal<"arxiv" | "medrxiv">("arxiv");
+    const [currentSource, setCurrentSource] = createSignal<Source>("arxiv");
     const [isScrolling, setIsScrolling] = createSignal(false);
     const [activeQueries, setActiveQueries] = createSignal<string[]>(defaultQueries);
     const [showAllQueries] = createSignal(false);
@@ -95,7 +95,6 @@ export default function Home() {
 
     const handleTouchMove = (e: TouchEvent) => {
         setTouchEnd(e.changedTouches[0].screenY);
-        // Prevent default scrolling behavior
         if (Math.abs(touchStart() - e.changedTouches[0].screenY) > 10) {
             e.preventDefault();
         }
@@ -114,7 +113,6 @@ export default function Home() {
             }
         }
 
-        // Reset touch values
         setTouchStart(0);
         setTouchEnd(0);
     };
@@ -185,9 +183,7 @@ export default function Home() {
     });
 
     return (
-        <main
-            class="h-screen w-screen overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 touch-none overscroll-none"
-        >
+        <main class="h-screen w-screen overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 touch-none overscroll-none">
             <div class="fixed top-0 left-0 right-0 z-50 h-16 px-3 sm:px-6 bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
                 <div class="max-w-7xl mx-auto h-full flex items-center relative">
                     <div class="flex-none flex items-center space-x-2 sm:space-x-4 h-full">
@@ -211,7 +207,13 @@ export default function Home() {
                                     <span class="mr-2">
                                         {currentSource() === "arxiv"
                                             ? "arXiv"
-                                            : "medRxiv"}
+                                            : currentSource() === "medrxiv"
+                                            ? "medRxiv" 
+                                            : currentSource() === "biorxiv"
+                                            ? "bioRxiv"
+                                            : currentSource() === "pubmed"
+                                            ? "PubMed"
+                                            : ""}
                                     </span>
                                     <svg
                                         class="w-4 h-4 text-gray-500"
@@ -283,6 +285,62 @@ export default function Home() {
                                             <span>medRxiv</span>
                                         </div>
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setCurrentSource("biorxiv");
+                                            loadPapers(true);
+                                        }}
+                                    >
+                                        <div class="flex items-center">
+                                            <svg
+                                                class={`w-4 h-4 mr-2 ${
+                                                    currentSource() ===
+                                                    "biorxiv"
+                                                        ? "text-blue-500"
+                                                        : "text-transparent"
+                                                }`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>bioRxiv</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setCurrentSource("pubmed");
+                                            loadPapers(true);
+                                        }}
+                                    >
+                                        <div class="flex items-center">
+                                            <svg
+                                                class={`w-4 h-4 mr-2 ${
+                                                    currentSource() === "pubmed"
+                                                        ? "text-blue-500"
+                                                        : "text-transparent"
+                                                }`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>PubMed</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -291,16 +349,13 @@ export default function Home() {
                         <div class="flex-1 mx-4 min-w-0">
                             <div class="w-full flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 backdrop-blur-sm shadow-sm">
                                 <div class="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-                                    {activeQueries()
-                                        .map((query) => (
-                                            <QueryBadge
-                                                query={query}
-                                                onRemove={() =>
-                                                    removeQuery(query)
-                                                }
-                                                compact={!showAllQueries()}
-                                            />
-                                        ))}
+                                    {activeQueries().map((query) => (
+                                        <QueryBadge
+                                            query={query}
+                                            onRemove={() => removeQuery(query)}
+                                            compact={!showAllQueries()}
+                                        />
+                                    ))}
                                 </div>
                                 <button
                                     onClick={() => {
@@ -354,10 +409,7 @@ export default function Home() {
             <SearchBar onSearch={handleSearch} />
 
             <div class="relative h-full w-full">
-                <Show
-                    when={papers().length > 0}
-                    fallback={<NoResults />}
-                >
+                <Show when={papers().length > 0} fallback={<NoResults />}>
                     <For each={papers()}>
                         {(paper, index) => (
                             <div

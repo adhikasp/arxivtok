@@ -16,12 +16,7 @@ import { SourceMixer } from "@/components/SourceMixer";
 import { PaperRoulette } from "@/components/PaperRoulette";
 
 const defaultQueries = [
-    "Artificial Intelligence",
-    "Machine Learning",
-    "Computation and Language",
-    "Computer Vision",
-    "Neural and Evolutionary Computing",
-    "Machine Learning",
+    "all",
 ];
 
 export default function Home() {

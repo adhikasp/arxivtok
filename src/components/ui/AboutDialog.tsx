@@ -12,10 +12,10 @@ export const AboutDialog: Component<{
           <DialogTitle>About ArXivTok</DialogTitle>
           <DialogDescription>
             <p class="mb-4">
-              ArXivTok is a TikTok-style interface for browsing arXiv papers. Swipe up and down to discover new research papers.
+              ArXivTok is a TikTok-style interface for browsing arXiv papers. Swipe up and down to discover new research papers. Thank you to arXiv for use of its open access interoperability.
             </p>
             <div class="flex items-center space-x-2">
-              <span>GitHub Repository:</span>
+              <span>Forked from the original GitHub Repository:</span>
               <a
                 href="https://github.com/miguel07alm/arxivtok"
                 target="_blank"

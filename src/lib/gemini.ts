@@ -17,7 +17,7 @@ function getPersonaPrompt(persona: Persona): string {
     case "college":
       return "Rewrite this academic paper abstract for a college student in that field of study. Use appropriate terminology but explain complex concepts clearly.";
     case "professional":
-      return "Rewrite this academic paper abstract for a professional software engineer or researcher. Use technical terminology and focus on implementation details and methodologies.";
+      return "Rewrite this academic paper abstract for a professional software engineer. Use technical terminology and focus on implementation details and methodologies. Highlight potential on implication on building tech products or services, if any.";
     case "kids":
       return "Rewrite this academic paper abstract for children under 10 years old. Use very simple language, fun analogies, and avoid all technical terms. Make it engaging and relatable to a child's everyday experiences.";
     case "researcher":
@@ -52,7 +52,10 @@ ${abstract}
 </abstract>
 
 ${personaPrompt}
-Reply directly with the content, do not include preamble like "Here is the simplified abstract" or anything else.`;
+Reply directly with the content, do not include preamble like "Here is the simplified abstract" or anything else.
+
+Use 200 word or less.
+`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

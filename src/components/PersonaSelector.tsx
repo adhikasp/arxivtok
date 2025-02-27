@@ -41,7 +41,7 @@ export const personas: PersonaOption[] = [
         id: "professional",
         name: "Professional",
         icon: "💻",
-        description: "Technical explanation for software engineers and researchers"
+        description: "Technical explanation for software engineers."
     },
     {
         id: "researcher",

@@ -7,6 +7,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 - 📱 TikTok-style vertical swipe interface
 - 🎯 Multi-source paper browsing (arXiv, medRxiv, bioRxiv, PubMed, HackerNews)
 - 🧠 AI-powered abstract simplification using Google's Gemini
+- 👤 Customizable explanation personas (college student, professional, layman)
 - ❤️ Save favorite papers
 - 🔍 Real-time search with suggestions
 - 📲 Touch-optimized mobile experience
@@ -53,6 +54,11 @@ npm run dev
 - **Tap links**: Open source papers
 - **Search bar**: Find specific papers
 - **Source selector**: Switch between paper sources
+- **Persona selector**: Change how abstracts are explained
+  - **Default**: Simplified for general audience
+  - **College Student**: Explained for students in that field
+  - **Professional**: Technical explanation for experts
+  - **Layman**: Simple explanation for non-technical readers
 
 ## 📚 API Integration
 
@@ -78,6 +84,7 @@ src/
 ├── lib/             # Core utilities and business logic
 │   ├── papers.ts    # Paper data management
 │   ├── favorites.ts # Favorites functionality
+│   ├── gemini.ts    # AI abstract simplification
 │   └── progress.ts  # Progress tracking
 ├── routes/          # Application routes/pages
 ├── app.tsx          # Main application component
@@ -90,12 +97,14 @@ src/
 - **PaperRoulette.tsx**: Handles the TikTok-style paper swiping interface
 - **SearchBar.tsx**: Implements real-time search with suggestions
 - **SourceMixer.tsx**: Controls paper source selection and mixing
+- **PersonaSelector.tsx**: Controls abstract explanation style
 - **FavoritesModal.tsx**: Manages saved/favorite papers
 
 ### Core Libraries
 
 - **papers.ts**: Core paper data fetching and processing
 - **favorites.ts**: Local storage management for favorite papers
+- **gemini.ts**: AI-powered abstract simplification with persona support
 - **progress.ts**: User progress and achievement tracking
 
 ## 🤝 Contributing

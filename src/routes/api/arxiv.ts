@@ -12,10 +12,10 @@ export async function GET({ request }: APIEvent) {
 
     let searchQuery = '';
     if (query) {
-        const terms = query.split(' ').map(term => `all:${term}`).join(' AND ');
+        const terms = query.split(' ').map(term => `all:${term}`).join(' OR ');
         searchQuery = encodeURIComponent(`(${terms})`);
     } else {
-        searchQuery = encodeURIComponent("cat:cs.AI OR cat:cs.LG");
+        searchQuery = encodeURIComponent("all:*");
     }
 
     const arxivUrl = `${ARXIV_API_URL}?search_query=${searchQuery}&start=${start}&max_results=${perPage}&sortBy=submittedDate&sortOrder=descending`;

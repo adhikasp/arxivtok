@@ -1,3 +1,5 @@
+import type { Persona } from "./gemini";
+
 export type Source = "arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews";
 
 export interface Paper {
@@ -19,6 +21,7 @@ export interface FetchOptions {
     perPage: number;
     queries?: string[];
     source?: Source;
+    persona?: Persona;
 }
 
 export async function fetchPapers({
@@ -26,11 +29,13 @@ export async function fetchPapers({
     perPage,
     queries,
     source = "arxiv",
+    persona = "default",
 }: FetchOptions): Promise<Paper[]> {
     const params = new URLSearchParams({
         page: page.toString(),
         perPage: perPage.toString(),
         source: source,
+        persona: persona,
     });
 
     if (queries?.length) {

@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { parseStringPromise } from "xml2js"
-import { simplifyAbstract } from "../../lib/gemini";
+import { simplifyAbstract, type Persona } from "../../lib/gemini";
 
 const ARXIV_API_URL = "https://export.arxiv.org/api/query"
 const MEDRXIV_API_URL = "https://api.medrxiv.org/details/medrxiv"
@@ -43,6 +43,7 @@ export async function GET({ request }: APIEvent) {
 	const perPage = Number(url.searchParams.get("perPage")) || 10
 	const query = url.searchParams.get("q") || ""
 	const source = url.searchParams.get("source") || "arxiv"
+	const persona = (url.searchParams.get("persona") as Persona) || "default"
 	
 	let papers;
 	switch (source) {
@@ -66,7 +67,7 @@ export async function GET({ request }: APIEvent) {
 	if (process.env.GEMINI_API_KEY) {
 		papersData = await Promise.all(papersData.map(async (paper: { summary: string }) => ({
 			...paper,
-			summary: await simplifyAbstract(paper.summary)
+			summary: await simplifyAbstract(paper.summary, persona)
 		})));
 	}
 

@@ -1,4 +1,4 @@
-import { createSignal, onMount, For, createEffect, Show } from "solid-js";
+import { Component, createSignal, onMount, For, createEffect, Show } from "solid-js";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
@@ -14,6 +14,8 @@ import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
 import { FavoritesModal } from "@/components/FavoritesModal";
 import { SourceMixer } from "@/components/SourceMixer";
 import { PaperRoulette } from "@/components/PaperRoulette";
+import { PersonaSelector, personas, PersonaOption } from "../components/PersonaSelector";
+import type { Persona } from "../lib/gemini";
 
 const defaultQueries = [
     "all",
@@ -46,6 +48,8 @@ export default function Home() {
     ]);
     const [showSourceMixer, setShowSourceMixer] = createSignal(false);
     const [isCardInteracting, setIsCardInteracting] = createSignal(false);
+    const [showPersonaSelector, setShowPersonaSelector] = createSignal(false);
+    const [selectedPersona, setSelectedPersona] = createSignal<Persona>("default");
 
     // Debounce function (optional, but recommended)
     const debounce = (func: () => void, delay: number) => {
@@ -56,9 +60,11 @@ export default function Home() {
         };
     };
 
-    const loadPapers = async (reset = false) => {
+    async function loadPapers(reset = false) {
         if (isLoading()) return;
+        
         setIsLoading(true);
+        
         try {
             const results = await Promise.all(
                 selectedSources().map((source) =>
@@ -67,6 +73,7 @@ export default function Home() {
                         perPage: Math.ceil(10 / selectedSources().length),
                         queries: activeQueries(),
                         source,
+                        persona: selectedPersona()
                     })
                 )
             );
@@ -85,7 +92,7 @@ export default function Home() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }
 
     const handleSearch = (query: string) => {
         setActiveQueries((prev) => [...new Set([...prev, query])]);
@@ -477,23 +484,56 @@ export default function Home() {
                     </svg>
                 </button>
 
-                <button
-                    onClick={() => setShowFavorites(true)}
-                    class="flex items-center space-x-2 px-4 py-3 bg-white/90 backdrop-blur-sm
-                           shadow-lg rounded-full hover:bg-white transition-all duration-300
-                           hover:scale-105 active:scale-95 group"
-                >
-                    <svg
-                        class="w-6 h-6 text-red-500"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
+                <div class="flex space-x-3">
+                    <button
+                        onClick={() => setShowPersonaSelector(true)}
+                        class="flex items-center space-x-2 px-4 py-3 bg-white/90 backdrop-blur-sm
+                               shadow-lg rounded-full hover:bg-white transition-all duration-300
+                               hover:scale-105 active:scale-95 group relative"
+                        title="Change abstract style"
                     >
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                    <span class="font-medium text-gray-700 group-hover:text-gray-900">
-                        {favorites().length}
-                    </span>
-                </button>
+                        <Show when={isLoading() && selectedPersona() !== "default"} fallback={
+                            <svg 
+                                class="w-6 h-6 text-blue-500" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path 
+                                    stroke-linecap="round" 
+                                    stroke-linejoin="round" 
+                                    stroke-width="1.5" 
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                />
+                            </svg>
+                        }>
+                            <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        </Show>
+                        <Show when={selectedPersona() !== "default"}>
+                            <span class="font-medium text-gray-700 group-hover:text-gray-900">
+                                {personas.find((p: PersonaOption) => p.id === selectedPersona())?.icon || ""}
+                            </span>
+                        </Show>
+                    </button>
+
+                    <button
+                        onClick={() => setShowFavorites(true)}
+                        class="flex items-center space-x-2 px-4 py-3 bg-white/90 backdrop-blur-sm
+                               shadow-lg rounded-full hover:bg-white transition-all duration-300
+                               hover:scale-105 active:scale-95 group"
+                    >
+                        <svg
+                            class="w-6 h-6 text-red-500"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                        <span class="font-medium text-gray-700 group-hover:text-gray-900">
+                            {favorites().length}
+                        </span>
+                    </button>
+                </div>
             </div>
 
             <FavoritesModal
@@ -512,6 +552,17 @@ export default function Home() {
                 }}
                 isOpen={showSourceMixer()}
                 onClose={() => setShowSourceMixer(false)}
+            />
+
+            <PersonaSelector
+                selectedPersona={selectedPersona()}
+                onPersonaChange={(persona) => {
+                    setSelectedPersona(persona);
+                    loadPapers(true);
+                }}
+                isOpen={showPersonaSelector()}
+                onClose={() => setShowPersonaSelector(false)}
+                isLoading={isLoading()}
             />
         </main>
     );

@@ -27,7 +27,7 @@ function getPersonaPrompt(persona: Persona): string {
     case "visual":
       return "Rewrite this academic paper abstract with a focus on visual and spatial explanations. Use descriptive language that creates mental images, spatial relationships, and visual metaphors to explain the concepts.";
     default:
-      return "Rewrite this academic paper abstract in plain English that is easy to understand. Keep the main points and findings, but make it more accessible to a general audience.";
+      return "Rewrite this academic paper abstract in plain English that is easy to understand for layman. Keep the main points and findings, but make it more accessible to an average person without any background in the field.";
   }
 }
 

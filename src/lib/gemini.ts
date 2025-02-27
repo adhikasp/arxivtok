@@ -23,7 +23,7 @@ function getPersonaPrompt(persona: Persona): string {
     case "researcher":
       return "Rewrite this academic paper abstract for a researcher in an adjacent field. Maintain technical rigor but provide additional context for field-specific terminology. Focus on methodological insights and potential cross-disciplinary applications.";
     case "executive":
-      return "Rewrite this academic paper abstract for a busy executive or decision-maker. Focus on business implications, practical applications, and potential impact. Be concise and highlight the most important takeaways in a structured format.";
+      return "Rewrite this academic paper abstract for a executive or decision-maker. Focus on business implications, practical applications, and potential to turn into a business opportunity.";
     case "visual":
       return "Rewrite this academic paper abstract with a focus on visual and spatial explanations. Use descriptive language that creates mental images, spatial relationships, and visual metaphors to explain the concepts.";
     default:

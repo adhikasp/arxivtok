@@ -1,13 +1,16 @@
-import { cn } from "@/lib/cn";
+import { Dialog as DialogPrimitive } from "@kobalte/core/dialog";
+import { splitProps } from "solid-js";
+
 import type {
 	DialogContentProps,
 	DialogDescriptionProps,
 	DialogTitleProps,
 } from "@kobalte/core/dialog";
-import { Dialog as DialogPrimitive } from "@kobalte/core/dialog";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { ComponentProps, ParentProps, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+
+
+import { cn } from "@/lib/cn";
 
 export const Dialog = DialogPrimitive;
 export const DialogTrigger = DialogPrimitive.Trigger;

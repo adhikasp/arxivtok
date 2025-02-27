@@ -1,7 +1,8 @@
 import { Component, createSignal, For, Show } from "solid-js";
+
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useFavorites } from "@/lib/favorites";
 import { Paper } from "@/lib/papers";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
 
 interface Props {
     isOpen: boolean;

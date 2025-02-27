@@ -1,4 +1,6 @@
-import { cn } from "@/lib/cn";
+import { DropdownMenu as DropdownMenuPrimitive } from "@kobalte/core/dropdown-menu";
+import { mergeProps, splitProps } from "solid-js";
+
 import type {
 	DropdownMenuCheckboxItemProps,
 	DropdownMenuContentProps,
@@ -10,10 +12,11 @@ import type {
 	DropdownMenuSeparatorProps,
 	DropdownMenuSubTriggerProps,
 } from "@kobalte/core/dropdown-menu";
-import { DropdownMenu as DropdownMenuPrimitive } from "@kobalte/core/dropdown-menu";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { ComponentProps, ParentProps, ValidComponent } from "solid-js";
-import { mergeProps, splitProps } from "solid-js";
+
+
+import { cn } from "@/lib/cn";
 
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;

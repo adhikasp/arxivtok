@@ -1,4 +1,4 @@
-import { Component, JSX } from "solid-js";
+import { Component } from "solid-js";
 
 interface QueryBadgeProps {
     query: string;

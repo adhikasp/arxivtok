@@ -1,3 +1,4 @@
+import katex from "katex";
 import {
     Component,
     createMemo,
@@ -7,14 +8,16 @@ import {
     Show,
     onCleanup,
 } from "solid-js";
-import katex from "katex";
+
 import "katex/dist/katex.min.css";
+import { toast } from "solid-sonner";
+
+import { AchievementToast } from "./AchievementToast";
+import { TutorialOverlay } from "./TutorialOverlay";
+
 import { favorites, useFavorites } from "@/lib/favorites";
 import { Paper } from "@/lib/papers";
-import { updateReadingProgress } from "@/lib/progress";
-import { TutorialOverlay } from "./TutorialOverlay";
-import { AchievementToast } from "./AchievementToast";
-import { toast } from "solid-sonner";
+
 import MarkdownIt from "markdown-it";
 
 interface LatexParserProps {

@@ -1,4 +1,5 @@
 import { Component, createSignal, Show } from "solid-js";
+
 import { Paper, Source } from "@/lib/papers";
 
 const ROULETTE_QUOTES = [

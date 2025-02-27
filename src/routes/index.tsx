@@ -1,24 +1,22 @@
-import { Component, createSignal, onMount, For, createEffect, Show } from "solid-js";
+import { createSignal, onMount, For, Show } from "solid-js";
 import { isServer } from "solid-js/web";
-import { PaperCard } from "@/components/PaperCard";
-import { SearchBar } from "@/components/SearchBar";
-import { AboutDialog } from "@/components/ui/AboutDialog";
-import { fetchPapers, Paper, Source } from "@/lib/papers";
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { QueryBadge } from "@/components/QueryBadge";
-import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
-import { FavoritesModal } from "@/components/FavoritesModal";
-import { SourceMixer } from "@/components/SourceMixer";
-import { PaperRoulette } from "@/components/PaperRoulette";
-import { PersonaSelector, personas, PersonaOption } from "../components/PersonaSelector";
-import type { Persona } from "../lib/gemini";
-import { usePersonaPreference, loadPersonaPreference, savePersonaPreference } from "../lib/personaPreferences";
 import { toast } from "solid-sonner";
+
+import { PersonaSelector, personas, PersonaOption } from "../components/PersonaSelector";
+import { usePersonaPreference } from "../lib/personaPreferences";
+
+import { FavoritesModal } from "@/components/FavoritesModal";
+import { PaperCard } from "@/components/PaperCard";
+import { PaperRoulette } from "@/components/PaperRoulette";
+import { QueryBadge } from "@/components/QueryBadge";
+import { SearchBar } from "@/components/SearchBar";
+import { SourceMixer } from "@/components/SourceMixer";
+import { AboutDialog } from "@/components/ui/AboutDialog";
+import { favorites, loadFavorites, setFavorites } from "@/lib/favorites";
+import { fetchPapers, Paper, Source } from "@/lib/papers";
+
+
+
 
 const defaultQueries = [
     "all",

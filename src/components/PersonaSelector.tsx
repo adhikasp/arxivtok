@@ -1,6 +1,8 @@
 import { Component, createSignal, Show, For } from "solid-js";
 import { isServer } from "solid-js/web";
+
 import { Drawer, DrawerContent } from "./ui/drawer";
+
 import type { Persona } from "../lib/gemini";
 
 interface Props {

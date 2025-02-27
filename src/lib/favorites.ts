@@ -1,4 +1,5 @@
 import { createSignal, createRoot, onMount } from "solid-js";
+
 import type { Paper } from "./papers";
 
 const STORAGE_KEY = "arxivtok_favorites";

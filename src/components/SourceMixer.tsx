@@ -1,6 +1,7 @@
 import { Component, createSignal, For, Show } from "solid-js";
-import { Source } from "@/lib/papers";
+
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Source } from "@/lib/papers";
 
 interface Props {
     selectedSources: Source[];

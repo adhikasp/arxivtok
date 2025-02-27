@@ -24,6 +24,22 @@ const defaultQueries = [
     "all",
 ];
 
+// Client-only component to render persona icon after hydration
+function ClientOnly(props: { children: any }) {
+    const [mounted, setMounted] = createSignal(false);
+    
+    onMount(() => {
+        // Set mounted after initial render to ensure hydration is complete
+        setTimeout(() => setMounted(true), 0);
+    });
+    
+    return (
+        <Show when={mounted()}>
+            {props.children}
+        </Show>
+    );
+}
+
 export default function Home() {
     const [papers, setPapers] = createSignal<any[]>([]);
     const [currentIndex, setCurrentIndex] = createSignal(0);
@@ -56,6 +72,16 @@ export default function Home() {
     // Use the persona preference hook
     const { selectedPersona, updatePersona } = usePersonaPreference();
 
+    // Initialize on mount
+    onMount(() => {
+        if (!isServer) {
+            // Load papers with the correct persona after component mounts
+            setTimeout(() => {
+                loadPapers(true);
+            }, 0);
+        }
+    });
+
     // Debounce function (optional, but recommended)
     const debounce = (func: () => void, delay: number) => {
         let timeoutId: any;
@@ -71,6 +97,9 @@ export default function Home() {
         setIsLoading(true);
         
         try {
+            // Ensure we have the latest persona preference before making the request
+            const currentPersona = selectedPersona();
+            
             const results = await Promise.all(
                 selectedSources().map((source) =>
                     fetchPapers({
@@ -78,7 +107,7 @@ export default function Home() {
                         perPage: Math.ceil(10 / selectedSources().length),
                         queries: activeQueries(),
                         source,
-                        persona: selectedPersona()
+                        persona: currentPersona
                     })
                 )
             );
@@ -514,11 +543,13 @@ export default function Home() {
                         }>
                             <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         </Show>
-                        <Show when={!isServer && selectedPersona() !== "default"}>
-                            <span class="font-medium text-gray-700 group-hover:text-gray-900">
-                                {personas.find((p: PersonaOption) => p.id === selectedPersona())?.icon || ""}
-                            </span>
-                        </Show>
+                        <ClientOnly>
+                            <Show when={selectedPersona() !== "default"}>
+                                <span class="font-medium text-gray-700 group-hover:text-gray-900">
+                                    {personas.find((p: PersonaOption) => p.id === selectedPersona())?.icon || ""}
+                                </span>
+                            </Show>
+                        </ClientOnly>
                     </button>
 
                     <button

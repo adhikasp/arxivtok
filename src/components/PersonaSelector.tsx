@@ -1,4 +1,5 @@
 import { Component, createSignal, Show, For } from "solid-js";
+import { isServer } from "solid-js/web";
 import { Drawer, DrawerContent } from "./ui/drawer";
 import type { Persona } from "../lib/gemini";
 
@@ -64,7 +65,7 @@ export const personas: PersonaOption[] = [
 
 export const PersonaSelector: Component<Props> = (props) => {
     const [selected, setSelected] = createSignal<Persona>(props.selectedPersona);
-    const isMobile = () => window.innerWidth < 768;
+    const isMobile = () => !isServer && window.innerWidth < 768;
 
     const handlePersonaSelect = (persona: Persona) => {
         setSelected(persona);

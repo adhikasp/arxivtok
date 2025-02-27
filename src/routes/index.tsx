@@ -1,4 +1,5 @@
 import { Component, createSignal, onMount, For, createEffect, Show } from "solid-js";
+import { isServer } from "solid-js/web";
 import { PaperCard } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
 import { AboutDialog } from "@/components/ui/AboutDialog";
@@ -16,6 +17,8 @@ import { SourceMixer } from "@/components/SourceMixer";
 import { PaperRoulette } from "@/components/PaperRoulette";
 import { PersonaSelector, personas, PersonaOption } from "../components/PersonaSelector";
 import type { Persona } from "../lib/gemini";
+import { usePersonaPreference, loadPersonaPreference, savePersonaPreference } from "../lib/personaPreferences";
+import { toast } from "solid-sonner";
 
 const defaultQueries = [
     "all",
@@ -49,7 +52,9 @@ export default function Home() {
     const [showSourceMixer, setShowSourceMixer] = createSignal(false);
     const [isCardInteracting, setIsCardInteracting] = createSignal(false);
     const [showPersonaSelector, setShowPersonaSelector] = createSignal(false);
-    const [selectedPersona, setSelectedPersona] = createSignal<Persona>("default");
+    
+    // Use the persona preference hook
+    const { selectedPersona, updatePersona } = usePersonaPreference();
 
     // Debounce function (optional, but recommended)
     const debounce = (func: () => void, delay: number) => {
@@ -490,7 +495,7 @@ export default function Home() {
                         class="flex items-center space-x-2 px-4 py-3 bg-white/90 backdrop-blur-sm
                                shadow-lg rounded-full hover:bg-white transition-all duration-300
                                hover:scale-105 active:scale-95 group relative"
-                        title="Change abstract style"
+                        title={`Abstract Style: ${personas.find((p: PersonaOption) => p.id === selectedPersona())?.name || "Default"}`}
                     >
                         <Show when={isLoading() && selectedPersona() !== "default"} fallback={
                             <svg 
@@ -509,7 +514,7 @@ export default function Home() {
                         }>
                             <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         </Show>
-                        <Show when={selectedPersona() !== "default"}>
+                        <Show when={!isServer && selectedPersona() !== "default"}>
                             <span class="font-medium text-gray-700 group-hover:text-gray-900">
                                 {personas.find((p: PersonaOption) => p.id === selectedPersona())?.icon || ""}
                             </span>
@@ -557,8 +562,19 @@ export default function Home() {
             <PersonaSelector
                 selectedPersona={selectedPersona()}
                 onPersonaChange={(persona) => {
-                    setSelectedPersona(persona);
+                    const oldPersona = selectedPersona();
+                    updatePersona(persona);
                     loadPapers(true);
+                    
+                    // Show toast notification
+                    if (persona !== oldPersona) {
+                        const personaOption = personas.find((p: PersonaOption) => p.id === persona);
+                        toast.success(`Abstract style changed to ${personaOption?.name}`, {
+                            description: personaOption?.description,
+                            icon: personaOption?.icon,
+                            duration: 3000,
+                        });
+                    }
                 }}
                 isOpen={showPersonaSelector()}
                 onClose={() => setShowPersonaSelector(false)}

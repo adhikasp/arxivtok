@@ -21,6 +21,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 - **Styling**: TailwindCSS
 - **Math Rendering**: KaTeX
 - **AI**: Google Gemini API
+- **Linting**: ESLint with TypeScript and SolidJS plugins
 - **APIs**: 
   - arXiv API
   - medRxiv API
@@ -59,6 +60,24 @@ npm run dev
   - **College Student**: Explained for students in that field
   - **Professional**: Technical explanation for experts
   - **Layman**: Simple explanation for non-technical readers
+
+## 🧹 Linting
+
+The project uses ESLint to maintain code quality and consistency:
+
+```bash
+# Run linter
+pnpm lint
+
+# Fix automatically fixable issues
+pnpm lint:fix
+```
+
+The linter is configured to catch:
+- Unused imports and variables
+- Import ordering issues
+- SolidJS reactivity issues
+- Basic code hygiene problems
 
 ## 📚 API Integration
 

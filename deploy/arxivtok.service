@@ -1,0 +1,22 @@
+[Unit]
+Description=arxivtok API
+After=network.target
+[Service]
+User=arxivtok
+# Env: OPENROUTER_API_KEY=..., BIND=127.0.0.1:3001
+EnvironmentFile=/etc/arxivtok.env
+ExecStart=/opt/arxivtok/arxivtok
+Restart=always
+MemoryMax=64M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+[Install]
+WantedBy=multi-user.target

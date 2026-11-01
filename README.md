@@ -17,10 +17,11 @@ A TikTok-style interface for exploring research papers across multiple sources i
 
 ## 🛠️ Tech Stack
 
-- **Framework**: SolidJS + SolidStart
+- **Frontend**: SolidJS + SolidStart, built as a static SPA (no SSR)
+- **API**: Rust (axum + reqwest) in [`server/`](server)
 - **Styling**: TailwindCSS
 - **Math Rendering**: KaTeX
-- **AI**: OpenRouter API (GPT 6 Luna, high reasoning)
+- **AI**: OpenRouter (default `openai/gpt-6-luna`, high reasoning)
 - **Linting**: ESLint with TypeScript and SolidJS plugins
 - **APIs**: 
   - arXiv API
@@ -31,22 +32,40 @@ A TikTok-style interface for exploring research papers across multiple sources i
 
 ## 🚀 Getting Started
 
-1. Clone and install dependencies:
+Requirements: Node 22+, pnpm, Rust (stable).
+
 ```bash
-git clone https://github.com/yourusername/arxiv-tok.git
-cd arxiv-tok
-npm install
+git clone https://github.com/adhikasp/arxivtok.git
+cd arxivtok
+pnpm install
+
+# 1. API (port 3001). OPENROUTER_API_KEY is optional: without it abstracts are returned unmodified.
+cp .env.example .env   # then edit
+(cd server && set -a && . ../.env && set +a && cargo run)
+
+# 2. Frontend dev server (proxies /api to 127.0.0.1:3001; override with API_URL)
+pnpm dev
 ```
 
-2. (Optional) Set up OpenRouter API key:
-   - Copy `.env.example` to `.env`
-   - Add your OpenRouter API key to `OPENROUTER_API_KEY`
-   - If you don't configure this, the app will return the original abstract.
+### Configuration (environment of the API)
 
-3. Run development server:
+| Variable | Default | |
+|---|---|---|
+| `OPENROUTER_API_KEY` | – | enables LLM abstract rewriting |
+| `OPENROUTER_MODEL` | `openai/gpt-6-luna` | any OpenRouter model id |
+| `REASONING_EFFORT` | `high` | OpenRouter `reasoning.effort` |
+| `BIND` | `127.0.0.1:3001` | listen address |
+| `STATIC_DIR` | – | also serve the built frontend (single-binary mode) |
+
+### Production build
+
 ```bash
-npm run dev
+pnpm build                                  # static files -> .output/public
+(cd server && cargo build --release)        # binary -> server/target/release/arxivtok
 ```
+
+Serve `.output/public` with any web server (falling back to `index.html`) and proxy `/api/*` to the binary,
+or run `STATIC_DIR=.output/public arxivtok` for a single process. [`deploy/`](deploy) has a Caddy and a systemd example.
 
 ## 📱 Usage
 
@@ -61,7 +80,7 @@ npm run dev
   - **Professional**: Technical explanation for experts
   - **Layman**: Simple explanation for non-technical readers
 
-## 🧹 Linting
+## 🧹 Linting & tests
 
 The project uses ESLint to maintain code quality and consistency:
 
@@ -71,6 +90,9 @@ pnpm lint
 
 # Fix automatically fixable issues
 pnpm lint:fix
+
+# API tests
+(cd server && cargo test)
 ```
 
 The linter is configured to catch:
@@ -91,23 +113,17 @@ The app integrates with multiple academic paper sources:
 
 ## 🏗️ Codebase Structure
 
-The project follows a standard SolidStart application structure:
-
 ```
-src/
-├── components/      # Reusable UI components
-│   ├── ui/          # Basic UI elements
-│   ├── PaperCard    # Paper display component
-│   ├── SearchBar    # Search functionality
-│   └── ...          # Other components
-├── lib/             # Core utilities and business logic
-│   ├── papers.ts    # Paper data management
-│   ├── favorites.ts # Favorites functionality
-│   ├── llm.ts    # AI abstract simplification
-│   └── progress.ts  # Progress tracking
-├── routes/          # Application routes/pages
-├── app.tsx          # Main application component
-└── app.css          # Global styles
+server/              # Rust API
+├── src/main.rs      # routes: GET /api/papers, GET /api/health
+├── src/sources.rs   # arXiv / medRxiv / bioRxiv / PubMed / HN fetchers
+└── src/llm.rs       # OpenRouter abstract simplification (personas, cache)
+src/                 # SolidJS SPA
+├── components/      # UI components (PaperCard, SearchBar, ...)
+├── lib/             # papers.ts, favorites.ts, progress.ts, ...
+├── routes/          # pages
+└── app.tsx
+deploy/              # Caddy + systemd examples
 ```
 
 ### Key Components
@@ -123,7 +139,6 @@ src/
 
 - **papers.ts**: Core paper data fetching and processing
 - **favorites.ts**: Local storage management for favorite papers
-- **llm.ts**: AI-powered abstract simplification with persona support
 - **progress.ts**: User progress and achievement tracking
 
 ## 🤝 Contributing

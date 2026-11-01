@@ -1,4 +1,5 @@
 import katex from "katex";
+import MarkdownIt from "markdown-it";
 import {
     Component,
     createMemo,
@@ -8,7 +9,6 @@ import {
     Show,
     onCleanup,
 } from "solid-js";
-
 import "katex/dist/katex.min.css";
 import { toast } from "solid-sonner";
 
@@ -18,16 +18,14 @@ import { TutorialOverlay } from "./TutorialOverlay";
 import { favorites, useFavorites } from "@/lib/favorites";
 import { Paper } from "@/lib/papers";
 
-import MarkdownIt from "markdown-it";
-
 interface LatexParserProps {
     text: string;
     isTitle?: boolean;
 }
 
 const PATTERNS = {
-    INLINE_MATH: /\$([^\$]+)\$|\\\(([^\)]+)\\\)/g,
-    DISPLAY_MATH: /\$\$([^\$]+)\$\$|\\\[([^\]]+)\\\]/g,
+    INLINE_MATH: /\$([^$]+)\$|\\\(([^)]+)\\\)/g,
+    DISPLAY_MATH: /\$\$([^$]+)\$\$|\\\[([^\]]+)\\\]/g,
     SYMBOLS: {
         "\\alpha": "α",
         "\\beta": "β",

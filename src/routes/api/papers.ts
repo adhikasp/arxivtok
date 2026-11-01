@@ -1,6 +1,6 @@
 import { parseStringPromise } from "xml2js"
 
-import { simplifyAbstract, type Persona } from "../../lib/gemini";
+import { simplifyAbstract, type Persona } from "../../lib/llm";
 
 import type { APIEvent } from "@solidjs/start/server";
 
@@ -66,7 +66,7 @@ export async function GET({ request }: APIEvent) {
 	}
 	let papersData = await papers.json()
 	
-	if (process.env.GEMINI_API_KEY) {
+	if (process.env.OPENROUTER_API_KEY) {
 		papersData = await Promise.all(papersData.map(async (paper: { summary: string }) => ({
 			...paper,
 			summary: await simplifyAbstract(paper.summary, persona)

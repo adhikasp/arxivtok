@@ -3,7 +3,7 @@ import { isServer } from "solid-js/web";
 
 import { Drawer, DrawerContent } from "./ui/drawer";
 
-import type { Persona } from "../lib/gemini";
+import type { Persona } from "../lib/llm";
 
 interface Props {
     isOpen: boolean;

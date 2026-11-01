@@ -1,4 +1,4 @@
-import type { Persona } from "./gemini";
+import type { Persona } from "./llm";
 
 export type Source = "arxiv" | "medrxiv" | "biorxiv" | "pubmed" | "hackernews";
 

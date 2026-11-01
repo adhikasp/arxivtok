@@ -1,9 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const MODEL_NAME = "gemini-2.0-flash";
-
-// Initialize Gemini API with environment variable
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const MODEL_NAME = "openai/gpt-6-luna";
+const REASONING_EFFORT = "high";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Cache for storing simplified abstracts
 const abstractCache = new Map<string, string>();
@@ -42,8 +39,6 @@ export async function simplifyAbstract(abstract: string, persona: Persona = "def
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-    
     const personaPrompt = getPersonaPrompt(persona);
     const prompt = `You are given an academic paper abstract:
 
@@ -57,16 +52,34 @@ Reply directly with the content, do not include preamble like "Here is the simpl
 Use 200 word or less.
 `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const simplifiedAbstract = response.text();
+    const res = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "X-Title": "ArxivTok",
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        reasoning: { effort: REASONING_EFFORT },
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+    }
+    const data = await res.json();
+    const simplifiedAbstract: string | undefined = data.choices?.[0]?.message?.content?.trim();
+    if (!simplifiedAbstract) {
+      throw new Error("OpenRouter returned an empty completion");
+    }
     
     // Store in cache
     abstractCache.set(cacheKey, simplifiedAbstract);
     
     return simplifiedAbstract;
   } catch (error) {
-    console.error("Error simplifying abstract with Gemini:", error);
+    console.error("Error simplifying abstract with OpenRouter:", error);
     // Return original abstract if processing fails
     return abstract;
   }

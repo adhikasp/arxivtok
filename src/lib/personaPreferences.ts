@@ -1,7 +1,7 @@
 import { createSignal, createRoot, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
 
-import type { Persona } from "./gemini";
+import type { Persona } from "./llm";
 
 const STORAGE_KEY = "arxivtok_persona_preference";
 

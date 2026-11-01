@@ -6,7 +6,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 
 - 📱 TikTok-style vertical swipe interface
 - 🎯 Multi-source paper browsing (arXiv, medRxiv, bioRxiv, PubMed, HackerNews)
-- 🧠 AI-powered abstract simplification using Google's Gemini
+- 🧠 AI-powered abstract simplification using OpenRouter (GPT 6 Luna)
 - 👤 Customizable explanation personas (college student, professional, layman)
 - ❤️ Save favorite papers
 - 🔍 Real-time search with suggestions
@@ -20,7 +20,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 - **Framework**: SolidJS + SolidStart
 - **Styling**: TailwindCSS
 - **Math Rendering**: KaTeX
-- **AI**: Google Gemini API
+- **AI**: OpenRouter API (GPT 6 Luna, high reasoning)
 - **Linting**: ESLint with TypeScript and SolidJS plugins
 - **APIs**: 
   - arXiv API
@@ -38,9 +38,9 @@ cd arxiv-tok
 npm install
 ```
 
-2. (Optional) Set up Gemini API key:
+2. (Optional) Set up OpenRouter API key:
    - Copy `.env.example` to `.env`
-   - Add your Gemini API key to `GEMINI_API_KEY`
+   - Add your OpenRouter API key to `OPENROUTER_API_KEY`
    - If you don't configure this, the app will return the original abstract.
 
 3. Run development server:
@@ -103,7 +103,7 @@ src/
 ├── lib/             # Core utilities and business logic
 │   ├── papers.ts    # Paper data management
 │   ├── favorites.ts # Favorites functionality
-│   ├── gemini.ts    # AI abstract simplification
+│   ├── llm.ts    # AI abstract simplification
 │   └── progress.ts  # Progress tracking
 ├── routes/          # Application routes/pages
 ├── app.tsx          # Main application component
@@ -123,7 +123,7 @@ src/
 
 - **papers.ts**: Core paper data fetching and processing
 - **favorites.ts**: Local storage management for favorite papers
-- **gemini.ts**: AI-powered abstract simplification with persona support
+- **llm.ts**: AI-powered abstract simplification with persona support
 - **progress.ts**: User progress and achievement tracking
 
 ## 🤝 Contributing

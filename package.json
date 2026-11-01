@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@corvu/drawer": "^0.2.3",
-    "@google/generative-ai": "^0.21.0",
     "@kobalte/core": "^0.13.7",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.0.11",
